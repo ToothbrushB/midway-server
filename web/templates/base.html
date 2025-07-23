@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock %} - MIDWAY Robots</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+    <script>
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    OneSignalDeferred.push(async function(OneSignal) {
+        await OneSignal.init({
+        appId: "8a863b7b-9c92-4370-ac51-150061614be2",
+        });
+    });
+    </script>
+</head>
+
+<body>
+    <nav class="bg-gray-800 p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <!-- Logo -->
+            <a href="{{ url_for('index') }}" class="w-10 h-10 object-fill"><img src="{{ url_for('static', filename='images/logo.png') }}" alt="Breck Robotics Logo"></a>
+            
+            <!-- Desktop Menu - Centered -->
+            <div class="hidden md:flex space-x-6 flex-1 justify-center">
+                <a href="{{ url_for('index') }}" class="text-gray-300 hover:text-white">Home</a>
+                <a href="{{ url_for('design') }}" class="text-gray-300 hover:text-white">Design</a>
+                <a href="{{ url_for('cameras') }}" class="text-gray-300 hover:text-white">Cameras</a>
+                <a href="{{ url_for('settings') }}" class="text-gray-300 hover:text-white">Settings</a>
+                <a href="{{ url_for('tools') }}" class="text-gray-300 hover:text-white">Tools</a>
+            </div>
+            
+            <!-- Hamburger Menu Button for Mobile -->
+            <button id="mobile-menu-button" class="md:hidden text-gray-300 hover:text-white focus:outline-none">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                </svg>
+            </button>
+            
+            <!-- Spacer for desktop to balance logo -->
+            <div class="hidden md:block w-10 h-10"></div>
+        </div>
+        
+        <!-- Mobile Menu -->
+        <div id="mobile-menu" class="md:hidden hidden mt-4">
+            <div class="px-2 pt-2 pb-3 space-y-1 bg-gray-700 rounded-lg">
+                <a href="{{ url_for('index') }}" class="block px-3 py-2 text-gray-300 hover:text-white hover:bg-gray-600 rounded">Home</a>
+                <a href="{{ url_for('design') }}" class="block px-3 py-2 text-gray-300 hover:text-white hover:bg-gray-600 rounded">Design</a>
+                <a href="{{ url_for('cameras') }}" class="block px-3 py-2 text-gray-300 hover:text-white hover:bg-gray-600 rounded">Cameras</a>
+                <a href="{{ url_for('settings') }}" class="block px-3 py-2 text-gray-300 hover:text-white hover:bg-gray-600 rounded">Settings</a>
+                <a href="{{ url_for('tools') }}" class="block px-3 py-2 text-gray-300 hover:text-white hover:bg-gray-600 rounded">Tools</a>
+            </div>
+        </div>
+    </nav>
+    
+    <script>
+        // Toggle mobile menu
+        document.getElementById('mobile-menu-button').addEventListener('click', function() {
+            const mobileMenu = document.getElementById('mobile-menu');
+            mobileMenu.classList.toggle('hidden');
+        });
+        
+        // Close mobile menu when clicking outside
+        document.addEventListener('click', function(event) {
+            const mobileMenu = document.getElementById('mobile-menu');
+            const menuButton = document.getElementById('mobile-menu-button');
+            
+            if (!mobileMenu.contains(event.target) && !menuButton.contains(event.target)) {
+                mobileMenu.classList.add('hidden');
+            }
+        });
+        
+        // Close mobile menu when window is resized to desktop size
+        window.addEventListener('resize', function() {
+            if (window.innerWidth >= 768) { // md breakpoint
+                document.getElementById('mobile-menu').classList.add('hidden');
+            }
+        });
+    </script>
+    <section class="content">
+        <header class="text-lg font-bold p-4 bg-gray-200">
+            {% block header %}{% endblock %}
+        </header>
+        {% for message in get_flashed_messages() %}
+            <div class="flash">{{ message }}</div>
+        {% endfor %}
+        <div class="p-4">
+            {% block content %}{% endblock %}
+        </div>
+    </section>
+</body>
+
+</html>

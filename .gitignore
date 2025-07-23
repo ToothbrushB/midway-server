@@ -1,0 +1,6 @@
+onesignal.key
+__pycache__
+.venv
+.pyc
+tailwindcss
+html_server

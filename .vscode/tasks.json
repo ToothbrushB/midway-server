@@ -1,0 +1,31 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "build-tailwind",
+			"type": "shell",
+			"command": "./web/tailwindcss",
+			"args": [
+				"-i",
+				"./web/templates/input.css",
+				"-o",
+				"/var/www/server/static/style.css"
+			],
+			"group": "build",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "set-permissions",
+			"type": "shell",
+			"command": "chown -R midway:www-data /var/www/server && chmod -R 777 /var/www/server"
+		},
+		{
+        "label": "flask-prelaunch",
+        "dependsOn": [
+            "build-tailwind",
+            "set-permissions",
+        ]
+    }
+	]
+}
