@@ -5,12 +5,20 @@
 {% endblock %}
 
 {% block content %}
-  <h1 class="text-lg font-bold">Publish MQTT</h1>
+  <h1 class="text-lg font-bold p-2">Publish MQTT</h1>
   <form action="/api/mqtt" method="post" class="border border-gray-300 rounded-lg p-6 max-w-md">
     <label for="topic">Topic</label>
     <input type="text" name="topic" class="rounded border border-gray-400 outline-blue-500 w-full p-2 mb-4">
     <label for="payload">Payload</label>
     <input type="text" name="payload" class="rounded border border-gray-400 outline-blue-500 w-full p-2 mb-4 h-20">
+    <button type="submit" class="bg-gray-600 text-gray-300 hover:text-white rounded px-4 py-2">Submit</button>
+  </form>
+  <h1 class="text-lg font-bold p-2">Publish Notification</h1>
+  <form action="/api/notification" method="post" class="border border-gray-300 rounded-lg p-6 max-w-md">
+    <label for="title">Title</label>
+    <input type="text" name="title" class="rounded border border-gray-400 outline-blue-500 w-full p-2 mb-4">
+    <label for="content">Content</label>
+    <input type="text" name="content" class="rounded border border-gray-400 outline-blue-500 w-full p-2 mb-4 h-20">
     <button type="submit" class="bg-gray-600 text-gray-300 hover:text-white rounded px-4 py-2">Submit</button>
   </form>
 {% endblock %}
