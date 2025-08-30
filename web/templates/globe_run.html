@@ -1,0 +1,598 @@
+{% extends 'base.html' %}
+
+{% block header %}
+  <h1>{% block title %}Globe Run{% endblock %}</h1>
+{% endblock %}
+
+{% block content %}
+  <div class="max-w-6xl mx-auto">
+    <!-- Game Container -->
+    <div id="gameContainer" class="relative">
+      
+      <!-- Home Screen -->
+      <div id="homeScreen" class="text-center py-12 bg-gradient-to-br from-blue-500 via-purple-600 to-indigo-800 rounded-xl shadow-2xl mb-8">
+        <div class="text-white">
+          <div class="mb-8">
+            <span class="material-icons text-8xl mb-4 block animate-bounce">language</span>
+            <h1 class="text-5xl font-bold mb-4 gradient-text">Globe Run</h1>
+            <p class="text-xl mb-8 max-w-2xl mx-auto">
+              Guide your globe across the tables! Jump at the right moment to avoid falling and breaking on the floor.
+              The further you go, the higher your score!
+            </p>
+          </div>
+          
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 max-w-4xl mx-auto">
+            <div class="bg-white bg-opacity-20 rounded-lg p-6 backdrop-blur-sm">
+              <span class="material-icons text-4xl mb-3 block text-black">keyboard_space_bar</span>
+              <h3 class="font-bold mb-2 text-black">Jump</h3>
+              <p class="text-sm text-black">Press SPACE or click to make the globe jump</p>
+            </div>
+            <div class="bg-white bg-opacity-20 rounded-lg p-6 backdrop-blur-sm">
+              <span class="material-icons text-4xl mb-3 block text-black">trending_up</span>
+              <h3 class="font-bold mb-2 text-black">Score Points</h3>
+              <p class="text-sm text-black">Successfully land on tables to increase your score</p>
+            </div>
+            <div class="bg-white bg-opacity-20 rounded-lg p-6 backdrop-blur-sm">
+              <span class="material-icons text-4xl mb-3 block text-black">leaderboard</span>
+              <h3 class="font-bold mb-2 text-black">Compete</h3>
+              <p class="text-sm text-black">Set high scores and compete with others</p>
+            </div>
+          </div>
+          
+          <div class="space-y-6">
+            <button id="startGameBtn" class="bg-white hover:bg-gray-100 text-blue-600 font-bold py-4 px-8 rounded-lg text-xl transition-all duration-300 transform hover:scale-105">
+              <span class="material-icons mr-2">play_arrow</span>
+              Start Game
+            </button>
+            
+            <!-- Leaderboard -->
+            <div class="bg-white bg-opacity-90 rounded-lg p-8 backdrop-blur-sm max-w-2xl mx-auto">
+              <h3 class="text-3xl font-bold text-gray-800 mb-6 flex items-center justify-center">
+                <span class="material-icons mr-3 text-4xl text-gray-800">leaderboard</span>
+                Leaderboard
+              </h3>
+              <div id="homeLeaderboardList" class="space-y-3">
+                <!-- Leaderboard entries will be populated here -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Game Screen -->
+      <div id="gameScreen" class="hidden">
+        <div class="bg-gradient-to-b from-sky-300 to-sky-500 dark:from-sky-600 dark:to-sky-800 rounded-xl shadow-lg overflow-hidden">
+          <!-- Game HUD -->
+          <div class="bg-white dark:bg-gray-800 p-4 border-b border-gray-200 dark:border-gray-700">
+            <div class="flex items-center justify-center space-x-6">
+              <div class="text-center">
+                <p class="text-sm text-gray-600 dark:text-gray-400">Score</p>
+                <p id="scoreDisplay" class="text-2xl font-bold text-blue-600 dark:text-blue-400">0</p>
+              </div>
+              <div class="text-center">
+                <p class="text-sm text-gray-600 dark:text-gray-400">High Score</p>
+                <p id="highScoreDisplay" class="text-2xl font-bold text-purple-600 dark:text-purple-400">0</p>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Game Canvas -->
+          <div class="relative">
+            <canvas id="gameCanvas" width="1200" height="400" class="w-full h-96 block"></canvas>
+            
+            <!-- Game Over Overlay -->
+            <div id="gameOverOverlay" class="absolute inset-0 bg-black bg-opacity-30 hidden flex items-center justify-center">
+              <div class="bg-white dark:bg-gray-800 rounded-xl p-8 text-center max-w-md mx-4 shadow-2xl border-4 border-red-500">
+                <h2 class="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-2">Globe Broken!</h2>
+                <p class="text-gray-600 dark:text-gray-400 mb-4">Your globe fell and shattered on the floor</p>
+                <p class="text-lg mb-4">Final Score: <span id="finalScore" class="font-bold text-blue-600 dark:text-blue-400">0</span></p>
+                
+                <!-- High Score Entry -->
+                <div id="highScoreEntry" class="hidden mb-4">
+                  <p class="text-green-600 dark:text-green-400 font-bold mb-2">🎉 New High Score! 🎉</p>
+                  <input type="text" id="playerName" placeholder="Enter your name" maxlength="20" 
+                         class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg mb-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                  <button id="saveScoreBtn" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors w-full">
+                    Save Score
+                  </button>
+                </div>
+                
+                <div class="space-x-4">
+                  <button id="playAgainBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition-colors">
+                    Play Again
+                  </button>
+                  <button id="backToMenuBtn" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition-colors">
+                    Main Menu
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Controls -->
+          <div class="bg-white dark:bg-gray-800 p-4 text-center border-t border-gray-200 dark:border-gray-700">
+            <p class="text-gray-600 dark:text-gray-400">Press <kbd class="bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded">SPACE</kbd> or click the game area to jump</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .gradient-text {
+      background: linear-gradient(45deg, #60a5fa, #a78bfa, #f472b6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    kbd {
+      font-family: monospace;
+      font-size: 0.9em;
+    }
+    
+    #gameCanvas {
+      image-rendering: pixelated;
+    }
+    
+    .touch-manipulation {
+      touch-action: manipulation;
+    }
+    
+    @keyframes bounce {
+      0%, 20%, 53%, 80%, 100% {
+        transform: translate3d(0,0,0);
+      }
+      40%, 43% {
+        transform: translate3d(0,-30px,0);
+      }
+      70% {
+        transform: translate3d(0,-15px,0);
+      }
+      90% {
+        transform: translate3d(0,-4px,0);
+      }
+    }
+  </style>
+
+  <script>
+    // Game state management
+    let gameState = 'menu'; // menu, playing, gameOver
+    let currentScreen = 'home';
+    
+    // Game variables
+    let canvas, ctx;
+    let score = 0;
+    let highScore = 0;
+    let animationId;
+    
+    // Game objects
+    let globe = {
+      x: 100,
+      y: 300,
+      radius: 20,
+      velocity: { x: 0, y: 0 },
+      onGround: true,
+      jumpPower: -15, // Increased jump power for easier gameplay
+      gravity: 0.6,
+      broken: false
+    };
+    
+    let tables = [];
+    let particles = [];
+    let gameSpeed = 2;
+    let nextTableDistance = 200;
+    
+    // Leaderboard storage
+    let leaderboard = JSON.parse(localStorage.getItem('globeRunLeaderboard') || '[]');
+    
+    // Initialize game
+    document.addEventListener('DOMContentLoaded', function() {
+      canvas = document.getElementById('gameCanvas');
+      ctx = canvas.getContext('2d');
+      
+      // Load high score
+      highScore = parseInt(localStorage.getItem('globeRunHighScore') || '0');
+      document.getElementById('highScoreDisplay').textContent = highScore;
+      
+      setupEventListeners();
+      showScreen('home');
+      generateInitialTables();
+    });
+    
+    function setupEventListeners() {
+      // Navigation buttons
+      document.getElementById('startGameBtn').addEventListener('click', startGame);
+      document.getElementById('backToMenuBtn').addEventListener('click', () => showScreen('home'));
+      document.getElementById('playAgainBtn').addEventListener('click', startGame);
+      
+      // Jump controls
+      document.addEventListener('keydown', function(e) {
+        if (e.code === 'Space' && gameState === 'playing') {
+          e.preventDefault();
+          jump();
+        }
+      });
+      
+      // Canvas click for jump
+      canvas.addEventListener('click', function() {
+        if (gameState === 'playing') jump();
+      });
+      
+      // High score saving
+      document.getElementById('saveScoreBtn').addEventListener('click', saveHighScore);
+      document.getElementById('playerName').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') saveHighScore();
+      });
+    }
+    
+    function showScreen(screen) {
+      // Hide all screens
+      document.getElementById('homeScreen').classList.add('hidden');
+      document.getElementById('gameScreen').classList.add('hidden');
+      
+      // Show selected screen
+      switch(screen) {
+        case 'home':
+          document.getElementById('homeScreen').classList.remove('hidden');
+          currentScreen = 'home';
+          updateHomeLeaderboard();
+          break;
+        case 'game':
+          document.getElementById('gameScreen').classList.remove('hidden');
+          currentScreen = 'game';
+          break;
+      }
+    }
+    
+    function startGame() {
+      // Reset game state
+      score = 0;
+      gameSpeed = 2;
+      globe.x = 100;
+      globe.y = 300;
+      globe.velocity = { x: 0, y: 0 };
+      globe.onGround = true;
+      globe.broken = false;
+      tables = [];
+      particles = [];
+      nextTableDistance = 200;
+      
+      generateInitialTables();
+      
+      gameState = 'playing';
+      showScreen('game');
+      
+      document.getElementById('scoreDisplay').textContent = score;
+      document.getElementById('gameOverOverlay').classList.add('hidden');
+      
+      // Start game loop
+      gameLoop();
+    }
+    
+    function generateInitialTables() {
+      tables = [];
+      // Starting table
+      tables.push({
+        x: 0,
+        y: 320,
+        width: 200,
+        height: 80
+      });
+      
+      // Generate initial tables
+      for (let i = 0; i < 5; i++) {
+        generateNextTable();
+      }
+    }
+    
+    function generateNextTable() {
+      let lastTable = tables[tables.length - 1];
+      let gap = Math.random() * 80 + 60; // Gap between 60-140 pixels (reduced for easier gameplay)
+      let tableWidth = Math.random() * 120 + 100; // Width between 100-220 pixels (larger tables)
+      let tableHeight = 80; // Fixed height for all tables
+      let tableY = 320; // Same Y position for all tables
+      
+      tables.push({
+        x: lastTable.x + lastTable.width + gap,
+        y: tableY,
+        width: tableWidth,
+        height: tableHeight
+      });
+    }
+    
+    function jump() {
+      if (globe.onGround && gameState === 'playing') {
+        globe.velocity.y = globe.jumpPower;
+        globe.onGround = false;
+      }
+    }
+    
+    function gameLoop() {
+      if (gameState !== 'playing') return;
+      
+      update();
+      draw();
+      
+      animationId = requestAnimationFrame(gameLoop);
+    }
+    
+    function update() {
+      // Update globe physics
+      globe.velocity.y += globe.gravity;
+      globe.y += globe.velocity.y;
+      
+      // Move tables (scrolling effect)
+      for (let table of tables) {
+        table.x -= gameSpeed;
+      }
+      
+      // Check table collisions
+      globe.onGround = false;
+      for (let table of tables) {
+        if (globe.x + globe.radius > table.x && 
+            globe.x - globe.radius < table.x + table.width &&
+            globe.y + globe.radius > table.y &&
+            globe.y + globe.radius < table.y + table.height + 10 &&
+            globe.velocity.y >= 0) {
+          
+          globe.y = table.y - globe.radius;
+          globe.velocity.y = 0;
+          globe.onGround = true;
+          
+          // Score points for landing on table
+          if (!table.scored) {
+            score += 10;
+            table.scored = true;
+            document.getElementById('scoreDisplay').textContent = score;
+          }
+          break;
+        }
+      }
+      
+      // Check if globe fell below screen or hit the floor
+      if (globe.y + globe.radius > canvas.height - 20) { // Hit the brown floor
+        if (!globe.broken) {
+          globe.broken = true;
+          // Position globe on the floor for break effect
+          globe.y = canvas.height - 20 - globe.radius;
+          // Create break particles when globe hits the ground
+          createBreakParticles();
+          // Show game over after a short delay to see the break effect
+          setTimeout(() => {
+            gameOver();
+          }, 500);
+        }
+        return;
+      }
+      
+      // Remove old tables and generate new ones
+      tables = tables.filter(table => table.x > -table.width - 100);
+      while (tables.length < 8) {
+        generateNextTable();
+      }
+      
+      // Update particles
+      particles = particles.filter(particle => {
+        particle.x += particle.velocity.x;
+        particle.y += particle.velocity.y;
+        particle.velocity.y += 0.3; // Gravity for particles
+        particle.velocity.x *= 0.98; // Air resistance
+        particle.life--;
+        return particle.life > 0;
+      });
+      
+      // Increase game speed gradually
+      gameSpeed += 0.001;
+    }
+    
+    function draw() {
+      // Clear canvas with black and white gradient
+      let gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      gradient.addColorStop(0, '#ffffff');
+      gradient.addColorStop(1, '#f0f0f0');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw clouds
+      drawClouds();
+      
+      // Draw tables
+      for (let table of tables) {
+        // Table top (light grey)
+        ctx.fillStyle = '#d1d5db';
+        ctx.fillRect(table.x, table.y, table.width, table.height);
+        
+        // Table edge/border (darker grey)
+        ctx.fillStyle = '#9ca3af';
+        ctx.fillRect(table.x, table.y, table.width, 4); // Top edge
+        ctx.fillRect(table.x, table.y, 4, table.height); // Left edge
+        ctx.fillRect(table.x + table.width - 4, table.y, 4, table.height); // Right edge
+        
+        // Table legs (dark grey)
+        const legWidth = 8;
+        const legHeight = 20;
+        ctx.fillStyle = '#6b7280';
+        // Left legs
+        ctx.fillRect(table.x + 10, table.y + table.height, legWidth, legHeight);
+        ctx.fillRect(table.x + 10, table.y + table.height + legHeight, legWidth + 4, 4); // leg base
+        // Right legs  
+        ctx.fillRect(table.x + table.width - 18, table.y + table.height, legWidth, legHeight);
+        ctx.fillRect(table.x + table.width - 22, table.y + table.height + legHeight, legWidth + 4, 4); // leg base
+        
+        // Table shadow (under the table)
+        ctx.fillStyle = 'rgba(0,0,0,0.2)';
+        ctx.fillRect(table.x + 5, table.y + table.height + 2, table.width, 8);
+      }
+      
+      // Draw globe (only if not broken)
+      if (!globe.broken) {
+        let globeGradient = ctx.createRadialGradient(globe.x - 5, globe.y - 5, 0, globe.x, globe.y, globe.radius);
+        globeGradient.addColorStop(0, '#ffffff');
+        globeGradient.addColorStop(0.7, '#808080');
+        globeGradient.addColorStop(1, '#404040');
+        
+        ctx.fillStyle = globeGradient;
+        ctx.beginPath();
+        ctx.arc(globe.x, globe.y, globe.radius, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Globe highlight
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+        ctx.beginPath();
+        ctx.arc(globe.x - 6, globe.y - 6, globe.radius * 0.3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      
+      // Draw particles (for effects)
+      for (let particle of particles) {
+        ctx.save();
+        ctx.globalAlpha = particle.life / (particle.maxLife || 30);
+        ctx.fillStyle = particle.color;
+        ctx.beginPath();
+        ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+      
+      // Draw floor (danger zone)
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, canvas.height - 20, canvas.width, 20);
+    }
+    
+    function drawClouds() {
+      ctx.fillStyle = 'rgba(200,200,200,0.8)';
+      
+      // Simple cloud shapes
+      let cloudOffset = (Date.now() * 0.01) % (canvas.width + 200);
+      
+      for (let i = 0; i < 3; i++) {
+        let x = (i * 300 - cloudOffset) % (canvas.width + 200) - 100;
+        let y = 50 + i * 30;
+        
+        ctx.beginPath();
+        ctx.arc(x, y, 20, 0, Math.PI * 2);
+        ctx.arc(x + 20, y, 25, 0, Math.PI * 2);
+        ctx.arc(x + 40, y, 20, 0, Math.PI * 2);
+        ctx.arc(x + 20, y - 15, 15, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    
+    function gameOver() {
+      gameState = 'gameOver';
+      cancelAnimationFrame(animationId);
+      
+      document.getElementById('finalScore').textContent = score;
+      
+      // Check for high score
+      if (score > highScore) {
+        highScore = score;
+        localStorage.setItem('globeRunHighScore', highScore.toString());
+        document.getElementById('highScoreDisplay').textContent = highScore;
+        document.getElementById('highScoreEntry').classList.remove('hidden');
+        document.getElementById('playerName').focus();
+      } else {
+        document.getElementById('highScoreEntry').classList.add('hidden');
+      }
+      
+      // Show game over overlay
+      document.getElementById('gameOverOverlay').classList.remove('hidden');
+    }
+    
+    function createBreakParticles() {
+      // Create break particles at globe position
+      for (let i = 0; i < 25; i++) {
+        particles.push({
+          x: globe.x + (Math.random() - 0.5) * 20,
+          y: globe.y + (Math.random() - 0.5) * 20,
+          velocity: {
+            x: (Math.random() - 0.5) * 12,
+            y: Math.random() * -10 - 3
+          },
+          color: ['#ffffff', '#cccccc', '#808080', '#404040'][Math.floor(Math.random() * 4)],
+          size: Math.random() * 6 + 2,
+          life: 80,
+          maxLife: 80
+        });
+      }
+    }
+    
+    function saveHighScore() {
+      let playerName = document.getElementById('playerName').value.trim();
+      if (!playerName) {
+        alert('Please enter your name!');
+        return;
+      }
+      
+      leaderboard.push({
+        name: playerName,
+        score: score,
+        date: new Date().toLocaleDateString()
+      });
+      
+      // Sort leaderboard by score (descending)
+      leaderboard.sort((a, b) => b.score - a.score);
+      
+      // Keep only top 10 scores
+      leaderboard = leaderboard.slice(0, 10);
+      
+      // Save to localStorage
+      localStorage.setItem('globeRunLeaderboard', JSON.stringify(leaderboard));
+      
+      document.getElementById('highScoreEntry').classList.add('hidden');
+      alert('High score saved!');
+      
+      // Update home leaderboard if we're on home screen
+      if (currentScreen === 'home') {
+        updateHomeLeaderboard();
+      }
+    }
+    
+    function updateHomeLeaderboard() {
+      let homeLeaderboardList = document.getElementById('homeLeaderboardList');
+      homeLeaderboardList.innerHTML = '';
+      
+      if (leaderboard.length === 0) {
+        homeLeaderboardList.innerHTML = `
+          <div class="text-center py-6 text-gray-600">
+            <span class="material-icons text-5xl mb-3 block text-gray-400">emoji_events</span>
+            <p class="text-lg">No scores yet! Be the first!</p>
+          </div>
+        `;
+        return;
+      }
+      
+      // Show top 8 scores
+      leaderboard.slice(0, 8).forEach((entry, index) => {
+        let rankColor = index === 0 ? 'text-yellow-600' : index === 1 ? 'text-gray-500' : index === 2 ? 'text-orange-600' : 'text-gray-700';
+        let rankIcon = index === 0 ? 'emoji_events' : index === 1 ? 'military_tech' : index === 2 ? 'workspace_premium' : 'person';
+        
+        homeLeaderboardList.innerHTML += `
+          <div class="flex items-center justify-between bg-gray-50 rounded-lg p-4 border border-gray-200">
+            <div class="flex items-center space-x-4">
+              <span class="material-icons ${rankColor} text-2xl">${rankIcon}</span>
+              <div>
+                <p class="font-bold text-gray-800 text-lg">${entry.name}</p>
+                <p class="text-sm text-gray-500">${entry.date}</p>
+              </div>
+            </div>
+            <div class="text-right">
+              <p class="text-2xl font-bold ${rankColor}">${entry.score}</p>
+              <p class="text-sm text-gray-500">points</p>
+            </div>
+          </div>
+        `;
+      });
+      
+      // Show "View all" if more than 8 scores
+      if (leaderboard.length > 8) {
+        homeLeaderboardList.innerHTML += `
+          <div class="text-center pt-3">
+            <p class="text-sm text-gray-600">+ ${leaderboard.length - 8} more scores</p>
+          </div>
+        `;
+      }
+    }
+  </script>
+{% endblock %}

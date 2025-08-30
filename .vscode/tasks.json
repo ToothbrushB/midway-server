@@ -4,21 +4,15 @@
 		{
 			"label": "build-tailwind",
 			"type": "shell",
-			"command": "./web/tailwindcss -i ./web/html_server/.hidden/input.css -o /var/www/server/static/static_style.css && ./web/tailwindcss -i ./web/input.css -o /var/www/server/static/style.css",
+			"command": "./web/tailwindcss -i ./web/html_server/.hidden/input.css -o /var/www/server/static/static_style.css && ./web/tailwindcss -i ./web/input.css -o /var/www/server/static/style.css && chown -R midway:www-data /var/www/server && chmod -R 777 /var/www/server",
 			"group": "build",
 			"isBackground": false,
 			"problemMatcher": []
 		},
 		{
-			"label": "set-permissions",
-			"type": "shell",
-			"command": "chown -R midway:www-data /var/www/server && chmod -R 777 /var/www/server"
-		},
-		{
         "label": "flask-prelaunch",
         "dependsOn": [
-            "build-tailwind",
-            "set-permissions",
+            "build-tailwind"
         ]
     }
 	]

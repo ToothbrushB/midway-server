@@ -1,0 +1,115 @@
+{
+    "before": {
+        "id": "1755536357.698662-u4trpc",
+        "camera": "cam_4",
+        "frame_time": 1755536564.893675,
+        "snapshot": {
+            "frame_time": 1755536564.893675,
+            "box": [
+                1023,
+                419,
+                1272,
+                668
+            ],
+            "area": 62001,
+            "region": [
+                960,
+                400,
+                1280,
+                720
+            ],
+            "score": 0.796875,
+            "attributes": []
+        },
+        "label": "person",
+        "sub_label": null,
+        "top_score": 0.7890625,
+        "false_positive": false,
+        "start_time": 1755536357.698662,
+        "end_time": null,
+        "score": 0.796875,
+        "box": [
+            1023,
+            419,
+            1272,
+            668
+        ],
+        "area": 62001,
+        "ratio": 1.0,
+        "region": [
+            960,
+            400,
+            1280,
+            720
+        ],
+        "active": true,
+        "stationary": false,
+        "motionless_count": 2,
+        "position_changes": 1,
+        "current_zones": [],
+        "entered_zones": [],
+        "has_clip": true,
+        "has_snapshot": true,
+        "attributes": {},
+        "current_attributes": [],
+        "pending_loitering": false,
+        "max_severity": "alert"
+    },
+    "after": {
+        "id": "1755536357.698662-u4trpc",
+        "camera": "cam_4",
+        "frame_time": 1755536569.882358,
+        "snapshot": {
+            "frame_time": 1755536569.882358,
+            "box": [
+                1008,
+                408,
+                1250,
+                657
+            ],
+            "area": 60258,
+            "region": [
+                764,
+                204,
+                1280,
+                720
+            ],
+            "score": 0.71484375,
+            "attributes": []
+        },
+        "label": "person",
+        "sub_label": null,
+        "top_score": 0.7890625,
+        "false_positive": false,
+        "start_time": 1755536357.698662,
+        "end_time": null,
+        "score": 0.71484375,
+        "box": [
+            1008,
+            408,
+            1250,
+            657
+        ],
+        "area": 60258,
+        "ratio": 0.9718875502008032,
+        "region": [
+            764,
+            204,
+            1280,
+            720
+        ],
+        "active": true,
+        "stationary": false,
+        "motionless_count": 2,
+        "position_changes": 1,
+        "current_zones": [],
+        "entered_zones": [],
+        "has_clip": true,
+        "has_snapshot": true,
+        "attributes": {},
+        "current_attributes": [],
+        "pending_loitering": false,
+        "max_severity": "alert"
+    },
+    "type": "update"
+}

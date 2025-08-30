@@ -1,9 +1,441 @@
 {% extends 'base.html' %}
 
 {% block header %}
-  <h1>{% block title %}Settings{% endblock %}</h1>
+  <h1>{% block title %}Robot Control Settings{% endblock %}</h1>
 {% endblock %}
 
 {% block content %}
-  <h1>Hello World!</h1>
+  <div class="max-w-6xl mx-auto space-y-8">
+    
+    <!-- PID Control Settings -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+      <div class="bg-gradient-to-r from-blue-500 to-purple-600 p-6 rounded-t-xl">
+        <h2 class="text-2xl font-bold text-white flex items-center">
+          <span class="material-icons mr-3 text-3xl">tune</span>
+          PID Control Parameters
+        </h2>
+        <p class="text-blue-100 mt-2">Adjust proportional, integral, and derivative gains for robot control</p>
+      </div>
+      <div class="p-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+              Proportional Gain (Kp)
+            </label>
+            <input type="number" id="pidKp" step="0.01" value="1.0" 
+                   class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500">
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Controls response to current error</p>
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+              Integral Gain (Ki)
+            </label>
+            <input type="number" id="pidKi" step="0.01" value="0.1" 
+                   class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500">
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Controls response to accumulated error</p>
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+              Derivative Gain (Kd)
+            </label>
+            <input type="number" id="pidKd" step="0.01" value="0.05" 
+                   class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500">
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Controls response to rate of error change</p>
+          </div>
+        </div>
+        <div class="mt-6 flex space-x-4">
+          <button id="updatePidBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition-colors">
+            <span class="material-icons mr-2">update</span>
+            Update PID Settings
+          </button>
+          <button id="resetPidBtn" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition-colors">
+            <span class="material-icons mr-2">refresh</span>
+            Reset to Default
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Robot Control -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+      <div class="bg-gradient-to-r from-red-500 to-orange-500 p-6 rounded-t-xl">
+        <h2 class="text-2xl font-bold text-white flex items-center">
+          <span class="material-icons mr-3 text-3xl">stop_circle</span>
+          Robot Emergency Control
+        </h2>
+        <p class="text-red-100 mt-2">Stop all robots for maintenance or emergency situations</p>
+      </div>
+      <div class="p-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+              Stop Duration (seconds)
+            </label>
+            <input type="number" id="stopDuration" min="1" max="3600" value="30" 
+                   class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-red-500">
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">How long to stop all robots (1-3600 seconds)</p>
+          </div>
+          <div class="flex items-end">
+            <div class="space-y-2 w-full">
+              <button id="emergencyStopBtn" class="w-full bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg transition-colors font-bold">
+                <span class="material-icons mr-2">emergency</span>
+                EMERGENCY STOP ALL ROBOTS
+              </button>
+              <button id="resumeAllBtn" class="w-full bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg transition-colors" disabled>
+                <span class="material-icons mr-2">play_arrow</span>
+                Resume All Robots
+              </button>
+            </div>
+          </div>
+        </div>
+        <div id="stopStatus" class="mt-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hidden">
+          <p class="text-sm text-gray-600 dark:text-gray-400">
+            <span class="material-icons text-sm mr-1">info</span>
+            <span id="stopStatusText">All robots stopped. Time remaining: <span id="timeRemaining">--</span></span>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Robot Color Configuration: Three Panel Layout -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+      <div class="bg-gradient-to-r from-purple-500 to-pink-500 p-6 rounded-t-xl">
+        <h2 class="text-2xl font-bold text-white flex items-center">
+          <span class="material-icons mr-3 text-3xl">palette</span>
+          Robot Color Assignment
+        </h2>
+        <p class="text-purple-100 mt-2">Assign and manage colors for robots and their boxes</p>
+      </div>
+      <div class="p-6">
+        <div class="flex flex-row gap-4" style="min-height: 400px;">
+          <!-- Left Panel: Colors -->
+          <div class="flex flex-col w-32 bg-gray-50 dark:bg-gray-700 rounded-lg p-2 border border-gray-200 dark:border-gray-600">
+            <div id="colorList" class="flex-1 space-y-2 overflow-y-auto"></div>
+            <button id="addColorBtn" class="mt-2 w-full flex items-center justify-center bg-purple-500 hover:bg-purple-600 text-white rounded-lg py-1"><span class="material-icons">add</span></button>
+          </div>
+          <!-- Center Panel: Rows and Boxes -->
+          <div class="flex-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-2 overflow-x-auto">
+            <div id="rowsContainer" class="space-y-2"></div>
+          </div>
+          <!-- Right Panel: Row Toggles -->
+          <div class="flex flex-col w-32 bg-gray-50 dark:bg-gray-700 rounded-lg p-2 border border-gray-200 dark:border-gray-600">
+            <div class="font-semibold text-center mb-2 text-gray-700 dark:text-gray-200">Show Rows</div>
+            <div id="rowToggles" class="flex-1 space-y-1"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Bottom Controls: Period, Load, Save -->
+  <div class="flex justify-center items-center mt-10 gap-8">
+    <!-- Left: Period -->
+    <div class="flex items-center gap-2">
+      <label for="periodInput" class="font-semibold text-gray-700 dark:text-gray-200 text-lg">Period</label>
+      <input id="periodInput" type="number" min="1" value="1" class="w-28 px-25 py-10 text-lg border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
+    </div>
+    <!-- Center: Load -->
+    <div>
+      <button id="loadPatternBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-25 py-10 rounded-xl text-lg font-semibold transition-colors">Load</button>
+      <input type="file" id="patternFileInput" accept="application/json" class="hidden" />
+    </div>
+    <!-- Right: Save -->
+    <div>
+      <button id="savePatternBtn" class="bg-green-500 hover:bg-green-600 text-white px-25 py-10 rounded-xl text-lg font-semibold transition-colors">Save</button>
+    </div>
+  </div>
+  <script>
+    // --- Three Panel Color Assignment ---
+    document.addEventListener('DOMContentLoaded', function() {
+      initColorPanel();
+      initRowsPanel();
+      initRowToggles();
+    });
+
+    // --- Data Structures ---
+    let colors = [
+      { id: 1, value: '#FF0000' },
+      { id: 2, value: '#00FF00' },
+      { id: 3, value: '#0000FF' },
+      { id: 4, value: '#FFFF00' },
+      { id: 5, value: '#FF00FF' },
+      { id: 6, value: '#00FFFF' }
+    ];
+    let colorIdCounter = 7;
+    // Each row: { visible: true, boxes: [{colorId, colorValue}, ...] }
+    let rows = Array.from({length: 12}, (_,i) => ({ visible: true, boxes: [{ colorId: colors[i%colors.length].id, colorValue: colors[i%colors.length].value }] }));
+
+    // --- Left Panel: Color List ---
+    function initColorPanel() {
+      renderColorList();
+      document.getElementById('addColorBtn').onclick = function() {
+        // Generate a unique random color
+        const used = colors.map(c => c.value);
+        let randomColor = getUniqueRandomColor(used);
+        colors.push({ id: colorIdCounter++, value: randomColor });
+        renderColorList();
+        renderRows();
+      };
+    }
+    function renderColorList() {
+      const colorList = document.getElementById('colorList');
+      colorList.innerHTML = '';
+      colors.forEach((color, idx) => {
+        const colorDiv = document.createElement('div');
+        colorDiv.className = 'flex items-center gap-2';
+        colorDiv.setAttribute('draggable', 'true');
+        colorDiv.innerHTML = `
+          <input type="color" value="${color.value}" class="w-8 h-8 p-0 border-none bg-transparent cursor-pointer" />
+          <button class="ml-1 text-gray-400 hover:text-red-500" title="Delete" ${colors.length<=1?'disabled':''}><span class="material-icons text-base">delete</span></button>
+        `;
+        // Make the whole row draggable except for color input and delete button
+        colorDiv.addEventListener('dragstart', e => {
+          if (e.target === colorDiv.children[0] || e.target === colorDiv.children[1]) return;
+          e.dataTransfer.setData('text/color-id', color.id);
+        });
+
+        // Color change (update color swatch and boxes) always check for new color
+        colorDiv.children[0].addEventListener('input', e => {
+          color.value = e.target.value;
+                    
+          // Update all boxes with this color
+          rows.forEach((row, rowIdx) => {
+            row.boxes.forEach((boxObj, boxIdx) => {
+              if (boxObj.colorId === color.id) {
+                boxObj.colorValue = color.value;
+                // get the child div
+                const box = document.getElementById(`box-${rowIdx}-${boxIdx}`);
+                if (box) {
+                  box.style.background = boxObj.colorValue;
+                }
+              }
+            });
+          });
+        });
+        // Delete
+        colorDiv.children[1].onclick = () => {
+          if (colors.length > 1) {
+            const oldId = color.id;
+            colors = colors.filter(c => c.id !== oldId);
+            rows.forEach(row => {
+              row.boxes = row.boxes.map(boxObj => boxObj.colorId === oldId ? { colorId: colors[0].id, colorValue: colors[0].value } : boxObj);
+            });
+            renderColorList();
+            renderRows();
+            
+          }
+        };
+        colorList.appendChild(colorDiv);
+      });      
+    }
+
+    // --- Center Panel: Rows and Boxes ---
+    function initRowsPanel() {
+      renderRows();
+    }
+    function renderRows() {
+      const rowsContainer = document.getElementById('rowsContainer');
+      rowsContainer.innerHTML = '';
+      // Determine the max number of boxes in any row
+      const maxBoxes = Math.max(...rows.map(row => row.boxes.length));
+      rows.forEach((row, rowIdx) => {
+        if (!row.visible) return;
+        const rowDiv = document.createElement('div');
+        rowDiv.className = 'flex items-center gap-2 group';
+        // Row label
+        rowDiv.innerHTML = `<span class="w-16 text-right text-gray-600 dark:text-gray-300">Robot ${rowIdx+1}</span>`;
+        // Make the row (excluding boxes) a drop target for new boxes
+        rowDiv.addEventListener('dragover', e => {
+          // Only allow drop if dragging a color from the left and not over a box
+          if (e.dataTransfer.types.includes('text/color-id')) {
+            if (e.target.classList.contains('box-draggable')) return;
+            e.preventDefault();
+            rowDiv.classList.add('ring-2','ring-purple-400');
+          }
+        });
+        rowDiv.addEventListener('dragleave', e => {
+          rowDiv.classList.remove('ring-2','ring-purple-400');
+        });
+        rowDiv.addEventListener('drop', e => {
+          rowDiv.classList.remove('ring-2','ring-purple-400');
+          // Only add a box if not dropped on a box
+          if (e.dataTransfer.types.includes('text/color-id') && !e.target.classList.contains('box-draggable')) {
+            const newColorId = parseInt(e.dataTransfer.getData('text/color-id'));
+            const colorObj = colors.find(c => c.id === newColorId);
+            if (colorObj) {
+              // Add a new box to all rows, using the last color of each row (or default),
+              // but for the target row, use the dropped color
+              rows.forEach((r, idx) => {
+                if (r === row) {
+                  r.boxes.push({ colorId: colorObj.id, colorValue: colorObj.value });
+                } else {
+                  let prev = r.boxes.length ? r.boxes[r.boxes.length-1] : { colorId: colors[0].id, colorValue: colors[0].value };
+                  r.boxes.push({ colorId: prev.colorId, colorValue: prev.colorValue });
+                }
+              });
+              renderRows();
+            }
+          }
+        });
+        // Boxes
+        row.boxes.forEach((boxObj, boxIdx) => {
+          const box = document.createElement('div');
+          box.id = `box-${rowIdx}-${boxIdx}`;
+          box.className = 'w-10 h-10 rounded border-2 border-gray-400 flex-shrink-0 cursor-pointer flex items-center justify-center box-draggable';
+          box.style.background = boxObj.colorValue;
+          box.setAttribute('draggable', 'true');
+          box.title = 'Drag to copy color, or drop a color here';
+          // Drag color from box
+          box.addEventListener('dragstart', e => {
+            e.dataTransfer.setData('text/color-id', boxObj.colorId);
+          });
+          // Drop color onto box
+          box.addEventListener('dragover', e => e.preventDefault());
+          box.addEventListener('drop', e => {
+            let newColorId = null;
+            if (e.dataTransfer.types.includes('text/color-id')) {
+              newColorId = parseInt(e.dataTransfer.getData('text/color-id'));
+            }
+            if (newColorId && newColorId !== boxObj.colorId) {
+              const colorObj = colors.find(c => c.id === newColorId);
+              if (colorObj) {
+                row.boxes[boxIdx] = { colorId: colorObj.id, colorValue: colorObj.value };
+                renderRows();
+              }
+            }
+          });
+          rowDiv.appendChild(box);
+        });
+        // Add box button
+        const addBoxBtn = document.createElement('button');
+        addBoxBtn.className = 'ml-2 bg-purple-400 hover:bg-purple-600 text-white rounded-full w-8 h-8 flex items-center justify-center opacity-80 group-hover:opacity-100';
+        addBoxBtn.innerHTML = '<span class="material-icons">add</span>';
+        addBoxBtn.onclick = () => {
+          // Add a new box to all rows, using the last color of each row (or default)
+          rows.forEach(r => {
+            let prev = r.boxes.length ? r.boxes[r.boxes.length-1] : { colorId: colors[0].id, colorValue: colors[0].value };
+            r.boxes.push({ colorId: prev.colorId, colorValue: prev.colorValue });
+          });
+          renderRows();
+        };
+        rowDiv.appendChild(addBoxBtn);
+        rowsContainer.appendChild(rowDiv);
+      });
+    }
+
+    // --- Right Panel: Row Toggles ---
+    function initRowToggles() {
+      renderRowToggles();
+    }
+    function renderRowToggles() {
+      const rowToggles = document.getElementById('rowToggles');
+      rowToggles.innerHTML = '';
+      rows.forEach((row, idx) => {
+        const toggleDiv = document.createElement('div');
+        toggleDiv.className = 'flex items-center gap-2';
+        toggleDiv.innerHTML = `
+          <input type="checkbox" ${row.visible ? 'checked' : ''} class="form-checkbox h-4 w-4 text-purple-600" id="toggleRow${idx}" />
+          <label for="toggleRow${idx}" class="text-gray-700 dark:text-gray-200 text-sm">Robot ${idx+1}</label>
+        `;
+        toggleDiv.children[0].onchange = (e) => {
+          row.visible = e.target.checked;
+          renderRows();
+        };
+        rowToggles.appendChild(toggleDiv);
+      });
+    }
+
+    // --- Notification (reuse existing) ---
+    function showNotification(message, type) {
+      const notification = document.createElement('div');
+      notification.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 transition-all duration-300 ${
+        type === 'success' ? 'bg-green-500 text-white' :
+        type === 'warning' ? 'bg-yellow-500 text-black' :
+        type === 'error' ? 'bg-red-500 text-white' :
+        'bg-blue-500 text-white'
+      }`;
+      notification.innerHTML = `
+        <div class="flex items-center">
+          <span class="material-icons mr-2">${
+            type === 'success' ? 'check_circle' :
+            type === 'warning' ? 'warning' :
+            type === 'error' ? 'error' :
+            'info'
+          }</span>
+          ${message}
+        </div>
+      `;
+      document.body.appendChild(notification);
+      setTimeout(() => { notification.remove(); }, 3000);
+    }
+
+    // --- Pattern Save/Load/Period ---
+    document.getElementById('savePatternBtn').onclick = function() {
+      const filename = prompt('Enter file name to save:', 'pattern.json');
+      if (!filename) return;
+      // Prepare data
+      const data = {
+        period: parseInt(document.getElementById('periodInput').value) || 1,
+        colors: colors.map(c => ({ id: c.id, value: c.value })),
+        rows: rows.map(row => ({ visible: row.visible, boxes: row.boxes.map(b => ({ colorId: b.colorId, colorValue: b.colorValue }) ) }))
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { document.body.removeChild(a); }, 100);
+    };
+    document.getElementById('loadPatternBtn').onclick = function() {
+      document.getElementById('patternFileInput').click();
+    };
+    document.getElementById('patternFileInput').onchange = function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        try {
+          const data = JSON.parse(evt.target.result);
+          if (data.period) document.getElementById('periodInput').value = data.period;
+          if (Array.isArray(data.colors)) {
+            colors = data.colors.map(c => ({ id: c.id, value: c.value }));
+            colorIdCounter = Math.max(...colors.map(c => c.id), 0) + 1;
+          }
+          if (Array.isArray(data.rows)) {
+            rows = data.rows.map(row => ({
+              visible: row.visible,
+              boxes: Array.isArray(row.boxes) ? row.boxes.map(b => ({ colorId: b.colorId, colorValue: b.colorValue })) : []
+            }));
+          }
+          renderColorList();
+          renderRows();
+          renderRowToggles();
+          showNotification('Pattern loaded!', 'success');
+        } catch (err) {
+          showNotification('Failed to load pattern: ' + err, 'error');
+        }
+      };
+      reader.readAsText(file);
+    };
+
+    // --- Utility: Get Unique Random Color ---
+    function getUniqueRandomColor(usedColors) {
+      const randomColor = () => '#' + Math.floor(Math.random()*16777215).toString(16);
+      let color;
+      do {
+        color = randomColor();
+      } while (usedColors.includes(color) || isGrayColor(color));
+      return color;
+    }
+    function isGrayColor(hex) {
+      if (!/^#([0-9A-F]{3}){1,2}$/.test(hex)) return false;
+      const rgb = parseInt(hex.slice(1), 16);
+      const r = (rgb >> 16) & 0xff;
+      const g = (rgb >>  8) & 0xff;
+      const b = (rgb >>  0) & 0xff;
+      // Calculate luminance (perceived brightness)
+      const luminance = 0.2126*r + 0.7152*g + 0.0722*b;
+      return luminance < 50; // Arbitrary threshold for "dark" colors
+    }
+  </script>
 {% endblock %}

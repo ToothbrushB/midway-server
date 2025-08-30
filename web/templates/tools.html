@@ -5,20 +5,345 @@
 {% endblock %}
 
 {% block content %}
-  <h1 class="text-lg font-bold p-2">Publish MQTT</h1>
-  <form action="/api/mqtt" method="post" class="border border-gray-300 rounded-lg p-6 max-w-md">
-    <label for="topic">Topic</label>
-    <input type="text" name="topic" class="rounded border border-gray-400 outline-blue-500 w-full p-2 mb-4">
-    <label for="payload">Payload</label>
-    <input type="text" name="payload" class="rounded border border-gray-400 outline-blue-500 w-full p-2 mb-4 h-20">
-    <button type="submit" class="bg-gray-600 text-gray-300 hover:text-white rounded px-4 py-2">Submit</button>
-  </form>
-  <h1 class="text-lg font-bold p-2">Publish Notification</h1>
-  <form action="/api/notification" method="post" class="border border-gray-300 rounded-lg p-6 max-w-md">
-    <label for="title">Title</label>
-    <input type="text" name="title" class="rounded border border-gray-400 outline-blue-500 w-full p-2 mb-4">
-    <label for="content">Content</label>
-    <input type="text" name="content" class="rounded border border-gray-400 outline-blue-500 w-full p-2 mb-4 h-20">
-    <button type="submit" class="bg-gray-600 text-gray-300 hover:text-white rounded px-4 py-2">Submit</button>
-  </form>
+  <div class="max-w-6xl mx-auto">
+    <!-- Header -->
+    <div class="mb-8">
+      <h2 class="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-2">Developer Tools</h2>
+      <p class="text-gray-600 dark:text-gray-400">MQTT messaging and problem reporting tools</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      
+      <!-- MQTT Publisher Tool -->
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div class="bg-gradient-to-r from-blue-500 to-purple-600 p-6">
+          <div class="flex items-center">
+            <div class="bg-white dark:bg-gray-800 p-3 rounded-lg mr-4">
+              <span class="material-icons text-blue-600 dark:text-blue-400 text-2xl">send</span>
+            </div>
+            <div>
+              <h3 class="text-xl font-bold text-white">Publish MQTT Message</h3>
+              <p class="text-blue-100">Send messages to MQTT topics</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="p-6">
+          <form action="/api/mqtt" method="post" class="space-y-6" id="mqttForm">
+            <div>
+              <label for="topic" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center">
+                <span class="material-icons mr-2 text-blue-600 dark:text-blue-400">topic</span>
+                Topic
+              </label>
+              <input type="text" 
+                     name="topic" 
+                     id="topic"
+                     placeholder="e.g., robot/commands"
+                     class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors"
+                     required>
+            </div>
+            
+            <div>
+              <label for="payload" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center">
+                <span class="material-icons mr-2 text-purple-600 dark:text-purple-400">code</span>
+                Payload
+              </label>
+              <textarea name="payload" 
+                        id="payload"
+                        rows="4"
+                        placeholder="Enter your message payload here..."
+                        class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 focus:border-purple-500 dark:focus:border-purple-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors resize-vertical"
+                        required></textarea>
+            </div>
+            
+            <button type="submit" 
+                    class="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:ring-offset-2 dark:focus:ring-offset-gray-800 flex items-center justify-center">
+              <span class="material-icons mr-2">send</span>
+              Publish Message
+            </button>
+          </form>
+          
+          <!-- Success/Error Messages -->
+          <div id="mqttResult" class="mt-4 hidden"></div>
+        </div>
+      </div>
+
+      <!-- Problem Reporter Tool -->
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div class="bg-gradient-to-r from-red-500 to-orange-500 p-6">
+          <div class="flex items-center">
+            <div class="bg-white dark:bg-gray-800 p-3 rounded-lg mr-4">
+              <span class="material-icons text-red-600 dark:text-red-400 text-2xl">report_problem</span>
+            </div>
+            <div>
+              <h3 class="text-xl font-bold text-white">Report a Problem</h3>
+              <p class="text-red-100">Submit issues and bug reports</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="p-6">
+          <form action="/api/notification" method="post" class="space-y-6" id="problemForm">
+            <div>
+              <label for="title" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center">
+                <span class="material-icons mr-2 text-red-600 dark:text-red-400">priority_high</span>
+                Problem Title
+              </label>
+              <input type="text" 
+                     name="title" 
+                     id="title"
+                     placeholder="Brief description of the issue"
+                     class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 dark:focus:ring-red-400 focus:border-red-500 dark:focus:border-red-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors"
+                     required>
+            </div>
+            
+            <div>
+              <label for="content" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center">
+                <span class="material-icons mr-2 text-orange-600 dark:text-orange-400">description</span>
+                Problem Details
+              </label>
+              <textarea name="content" 
+                        id="content"
+                        rows="4"
+                        placeholder="Describe the problem in detail, including steps to reproduce..."
+                        class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 dark:focus:ring-orange-400 focus:border-orange-500 dark:focus:border-orange-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors resize-vertical"
+                        required></textarea>
+            </div>
+            
+            <!-- Priority Selection -->
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center">
+                <span class="material-icons mr-2 text-yellow-600 dark:text-yellow-400">speed</span>
+                Priority Level
+              </label>
+              <div class="grid grid-cols-3 gap-3">
+                <label class="cursor-pointer">
+                  <input type="radio" name="priority" value="low" class="sr-only" checked>
+                  <div class="priority-option border-2 border-green-200 dark:border-green-700 bg-green-50 dark:bg-green-900 text-green-800 dark:text-green-200 rounded-lg p-3 text-center transition-all">
+                    <span class="material-icons block mb-1">trending_down</span>
+                    <span class="text-xs font-medium">Low</span>
+                  </div>
+                </label>
+                <label class="cursor-pointer">
+                  <input type="radio" name="priority" value="medium" class="sr-only">
+                  <div class="priority-option border-2 border-yellow-200 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded-lg p-3 text-center transition-all">
+                    <span class="material-icons block mb-1">trending_flat</span>
+                    <span class="text-xs font-medium">Medium</span>
+                  </div>
+                </label>
+                <label class="cursor-pointer">
+                  <input type="radio" name="priority" value="high" class="sr-only">
+                  <div class="priority-option border-2 border-red-200 dark:border-red-700 bg-red-50 dark:bg-red-900 text-red-800 dark:text-red-200 rounded-lg p-3 text-center transition-all">
+                    <span class="material-icons block mb-1">trending_up</span>
+                    <span class="text-xs font-medium">High</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+            
+            <button type="submit" 
+                    class="w-full bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-500 dark:focus:ring-red-400 focus:ring-offset-2 dark:focus:ring-offset-gray-800 flex items-center justify-center">
+              <span class="material-icons mr-2">report_problem</span>
+              Submit Problem Report
+            </button>
+          </form>
+          
+          <!-- Success/Error Messages -->
+          <div id="problemResult" class="mt-4 hidden"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Additional Tools Section -->
+    <div class="mt-12">
+      <h3 class="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-6">Quick Actions</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        <button onclick="sendTestMessage()" class="bg-blue-100 dark:bg-blue-900 hover:bg-blue-200 dark:hover:bg-blue-800 text-blue-800 dark:text-blue-200 p-4 rounded-lg transition-colors flex flex-col items-center">
+          <span class="material-icons text-2xl mb-2">quiz</span>
+          <span class="font-medium">Test MQTT</span>
+        </button>
+        
+        <button onclick="clearForms()" class="bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 p-4 rounded-lg transition-colors flex flex-col items-center">
+          <span class="material-icons text-2xl mb-2">clear_all</span>
+          <span class="font-medium">Clear Forms</span>
+        </button>
+        
+        <button onclick="showMQTTHistory()" class="bg-purple-100 dark:bg-purple-900 hover:bg-purple-200 dark:hover:bg-purple-800 text-purple-800 dark:text-purple-200 p-4 rounded-lg transition-colors flex flex-col items-center">
+          <span class="material-icons text-2xl mb-2">history</span>
+          <span class="font-medium">Message History</span>
+        </button>
+        
+        <button onclick="exportLogs()" class="bg-green-100 dark:bg-green-900 hover:bg-green-200 dark:hover:bg-green-800 text-green-800 dark:text-green-200 p-4 rounded-lg transition-colors flex flex-col items-center">
+          <span class="material-icons text-2xl mb-2">download</span>
+          <span class="font-medium">Export Logs</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .priority-option {
+      transition: all 0.2s ease;
+    }
+    
+    .priority-option:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    .dark .priority-option:hover {
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    }
+    
+    input[type="radio"]:checked + .priority-option {
+      border-width: 3px;
+      transform: scale(1.05);
+    }
+    
+    .gradient-border {
+      background: linear-gradient(45deg, #3b82f6, #8b5cf6);
+      padding: 2px;
+      border-radius: 0.75rem;
+    }
+    
+    .gradient-border > div {
+      background: white;
+      border-radius: 0.625rem;
+    }
+    
+    .dark .gradient-border > div {
+      background: #1f2937;
+    }
+  </style>
+
+  <script>
+    // AJAX form handling with visual feedback
+    document.getElementById('mqttForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const button = this.querySelector('button[type="submit"]');
+      const originalText = button.innerHTML;
+      const formData = new FormData(this);
+      
+      // Show loading state
+      button.innerHTML = '<span class="material-icons animate-spin mr-2">sync</span>Sending...';
+      button.disabled = true;
+      
+      // Send AJAX request
+      fetch('/api/mqtt', {
+        method: 'POST',
+        body: formData
+      })
+      .then(response => {
+        if (response.ok) {
+          showResult('mqttResult', 'Message published successfully!', 'success');
+          this.reset(); // Clear the form
+          return response.json().catch(() => ({})); // Parse JSON if available, ignore errors
+        } else {
+          return response.json().then(data => {
+            throw new Error(data.error || `HTTP ${response.status}: ${response.statusText}`);
+          }).catch(() => {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          });
+        }
+      })
+      .catch(error => {
+        showResult('mqttResult', error.message || 'Network error occurred', 'error');
+      })
+      .finally(() => {
+        button.innerHTML = originalText;
+        button.disabled = false;
+      });
+    });
+    
+    document.getElementById('problemForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const button = this.querySelector('button[type="submit"]');
+      const originalText = button.innerHTML;
+      const formData = new FormData(this);
+      
+      // Show loading state
+      button.innerHTML = '<span class="material-icons animate-spin mr-2">sync</span>Submitting...';
+      button.disabled = true;
+      
+      // Send AJAX request
+      fetch('/api/notification', {
+        method: 'POST',
+        body: formData
+      })
+      .then(response => {
+        if (response.ok) {
+          showResult('problemResult', 'Problem report submitted successfully! Caleb has been notified.', 'success');
+          this.reset(); // Clear the form
+          // Reset priority selection to default (low)
+          document.querySelector('input[name="priority"][value="low"]').checked = true;
+          document.querySelectorAll('.priority-option').forEach(option => {
+            option.classList.remove('ring-2', 'ring-blue-500');
+          });
+          return response.json().catch(() => ({})); // Parse JSON if available, ignore errors
+        } else {
+          return response.json().then(data => {
+            throw new Error(data.error || `HTTP ${response.status}: ${response.statusText}`);
+          }).catch(() => {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          });
+        }
+      })
+      .catch(error => {
+        showResult('problemResult', error.message || 'Network error occurred', 'error');
+      })
+      .finally(() => {
+        button.innerHTML = originalText;
+        button.disabled = false;
+      });
+    });
+    
+    // Priority selection handling
+    document.querySelectorAll('input[name="priority"]').forEach(radio => {
+      radio.addEventListener('change', function() {
+        document.querySelectorAll('.priority-option').forEach(option => {
+          option.classList.remove('ring-2', 'ring-blue-500');
+        });
+        this.nextElementSibling.classList.add('ring-2', 'ring-blue-500');
+      });
+    });
+    
+    function showResult(elementId, message, type) {
+      const resultDiv = document.getElementById(elementId);
+      const bgColor = type === 'success' ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200' : 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200';
+      const icon = type === 'success' ? 'check_circle' : 'error';
+      
+      resultDiv.className = `mt-4 p-4 rounded-lg ${bgColor} flex items-center`;
+      resultDiv.innerHTML = `<span class="material-icons mr-2">${icon}</span>${message}`;
+      resultDiv.classList.remove('hidden');
+      
+      // Hide after 5 seconds
+      setTimeout(() => {
+        resultDiv.classList.add('hidden');
+      }, 5000);
+    }
+    
+    // Quick action functions
+    function sendTestMessage() {
+      document.getElementById('topic').value = 'test/topic';
+      document.getElementById('payload').value = '{"message": "Hello World!", "timestamp": "' + new Date().toISOString() + '"}';
+      showResult('mqttResult', 'Test message loaded! Click "Publish Message" to send.', 'success');
+    }
+    
+    function clearForms() {
+      document.getElementById('mqttForm').reset();
+      document.getElementById('problemForm').reset();
+      document.querySelectorAll('[id$="Result"]').forEach(div => div.classList.add('hidden'));
+    }
+    
+    function showMQTTHistory() {
+      alert('MQTT History feature coming soon!');
+    }
+    
+    function exportLogs() {
+      alert('Export Logs feature coming soon!');
+    }
+  </script>
 {% endblock %}
