@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 
 BROKER = "midway.breckstampede.org"  # Change to your broker address
 TOPIC = "robots/#"  # Subscribe to all subtopics
-
 i = 0
 def on_connect(client, userdata, flags, reason_code, properties):
     if reason_code == 0:
