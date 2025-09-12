@@ -3,14 +3,106 @@ import numpy as np
 import time
 import math
 import random
+import pickle
 import paho.mqtt.client as mqtt
 from scipy.optimize import linear_sum_assignment
 from dataclasses import dataclass, field
 import matplotlib.pyplot as plt
 from stuff import *
+from formations import *
 
 BROKER = "midway.breckstampede.org"  # Change to your broker address
 TOPIC = "robots/#"  # Subscribe to all subtopics
+
+robot: list[Robot] = []
+
+def write_data():
+    # write all current server data to pickles
+    
+    # write robot data
+    with open('robots.pkl', 'wb') as f:
+        pickle.dump(robots, f)
+    
+    # for i in range(len(robots)):
+
+def load_robots():
+    # read robot data
+    with open('robots.pkl', 'rb') as f:
+        return pickle.load(f)
+
+# Official list of robots goes here:
+# robots: list[Robot] = []
+# for i in range(12):
+#     robots.append(Robot(i, 0, Pose(0, 0, 0.0), 0, False, [Color(0, 0, 0)], [Pose(0, 0, 0.0)], 0, 0, 29.21, 0, None))
+#     match (i):
+#         case 1: 
+# global variables holding important data
+
+circle_center = Pose(5, 5)
+static_obstacles = list[Square]
+obstacles: list[Square] = [Square(Pose(6.7, 10.3),to_meters(24)), Square(Pose(6.7, 5.0), to_meters(24)), Square(Pose(6.7, 15.7), to_meters(24))]
+circle_nums: list[int] = []
+robots: list[Robot] = []
+robots_dict: dict[str, Robot] = {}
+
+# settings
+# automatically continue once all robots arrive in position for circle
+auto_continue: bool = True
+# DANGEROUS: will force an override (ignore any safety checks)
+# for any changes issued by the website
+    # example of potential problem if enabled: path_interrupt called before
+    # all robots have reached their position for circle
+
+force_override: bool = False
+
+# represents the current path being run
+    # 0: random)
+    # 1: line
+    # 2: circle
+    # 3: groups
+selected_path: int = 0
+
+
+for i in range(12):
+    robots.append(Robot("", i, -1, Pose(1, 1), 0, False, None, RobotState.OFFLINE, 0, 0, 0, -1, None))
+    match(i):
+        case 0:
+            robots[i].globe_rad_m = to_meters(11.75 / 2)
+            robots[i].id = "6cc8404e2904"
+        case 1:
+            robots[i].globe_rad_m = to_meters(11.75 / 2)
+            robots[i].id = "3c8a1f5d2798"
+        case 2:
+            robots[i].globe_rad_m = to_meters(14 / 2)
+            robots[i].id = "004b128e3580"
+        case 3:
+            robots[i].globe_rad_m = to_meters(16 / 2)
+            robots[i].id = "6cc8408a9584"
+        case 4:
+            robots[i].globe_rad_m = to_meters(18 / 2)
+            robots[i].id = "6cc840862c9c"
+        case 5:
+            robots[i].globe_rad_m = to_meters(18 / 2)
+            robots[i].id = "6cc8404f6930"
+        case 6:
+            robots[i].globe_rad_m = to_meters(19.5 / 2)
+            robots[i].id = "3c8a1f5d75dc"
+        case 7:
+            robots[i].globe_rad_m = to_meters(21.5 / 2)
+            robots[i].id = "6cc84087a038"
+        case 8:
+            robots[i].globe_rad_m = to_meters(21.5 / 2)
+            robots[i].id = "004b12902ed0"
+        case 9:
+            robots[i].globe_rad_m = to_meters(21.5 / 2)
+            robots[i].id = "004b12900210"
+        case 10:
+            robots[i].globe_rad_m = to_meters(23.5 / 2)
+            robots[i].id = "6cc8404ff42c"
+        case 11:
+            robots[i].globe_rad_m = to_meters(23.5 / 2)
+            robots[i].id = "004b12534944"
+
 def on_connect(client, userdata, flags, reason_code, properties):
     if reason_code == 0:
         print("Connected to MQTT Broker!")
@@ -20,8 +112,9 @@ def on_connect(client, userdata, flags, reason_code, properties):
 
 def on_message(client, userdata, msg):
     topics = msg.topic.split('/')
-    if topics[0] == "robots" and not topics[1] in robots:
-        robots[topics[1]] = (Robot(name=topics[1]))
+    if topics[0] == "robots" and not topics[1] in robots_dict: # add the robot into the dictionary
+        robots_dict[topics[1]] = next([x for x in robots if x.id == [topics[1]]])
+        robots_dict[topics[1]].state = RobotState.LOADING
         print(f"Robot {topics[1]} connected")
 
     if topics[2] == "imu" and topics[3] == "euler":
@@ -34,7 +127,7 @@ def on_message(client, userdata, msg):
             rad_accuracy=data['rad_accuracy'],
             accuracy=data['accuracy']
         )
-        robots[topics[1]].heading = heading
+        robots_dict[topics[1]].heading = heading
         # print(f"Robot {topics[1]} heading: {heading}")
 
     if topics[2] == "led":
@@ -48,7 +141,7 @@ def on_message(client, userdata, msg):
             ),
             step=data['step']
         )
-        robots[topics[1]].led = led
+        robots_dict[topics[1]].led = led
 
     if topics[3] == "telemetry":
         data = json.loads(msg.payload.decode())
@@ -60,7 +153,7 @@ def on_message(client, userdata, msg):
             hasPower=data['hasPower']
             # json in c++ might need to be changed to True and False (instead of true and false)
         )
-        robots[topics[1]].telemetry = telemetry
+        robots_dict[topics[1]].telemetry = telemetry
     
     if topics[2] == "odometry":
         if topics[3] == "pose":
@@ -70,7 +163,7 @@ def on_message(client, userdata, msg):
                 y=data['y'],
                 heading=data['heading']
             )
-            robots[topics[1]].pose = pose
+            robots_dict[topics[1]].pose = pose
 
         elif topics[3] == "pose2":
             data = json.loads(msg.payload.decode())
@@ -79,12 +172,12 @@ def on_message(client, userdata, msg):
                 y=data['y'],
                 heading=data['heading']
             )
-            robots[topics[1]].pose2 = pose2
+            robots_dict[topics[1]].pose2 = pose2
 
     if topics[2] == "wifi" and topics[3] == "rssi":
         data = json.loads(msg.payload.decode())
         rssi = data['rssi']
-        robots[topics[1]].wifi_rssi = rssi  
+        robots_dict[topics[1]].wifi_rssi = rssi  
 
     if topics[2] == "tcs":
         data = json.loads(msg.payload.decode())
@@ -99,7 +192,7 @@ def on_message(client, userdata, msg):
                 color_temperature=data['color_temperature'],
                 status=data['status']
             )
-            robots[topics[1]].tcs = tcs
+            robots_dict[topics[1]].tcs = tcs
         else:
             tcs = TCS(
                 r=0,
@@ -110,29 +203,65 @@ def on_message(client, userdata, msg):
                 color_temperature=0,
                 status=status
             )
-            robots[topics[1]].tcs = tcs
+            robots_dict[topics[1]].tcs = tcs
 
-            robots[topics[1]].tcs.color_temperature = 0
-            robots[topics[1]].tcs.status = status
-            robots[topics[1]].tcs = tcs
+            robots_dict[topics[1]].tcs.color_temperature = 0
+            robots_dict[topics[1]].tcs.status = status
+            robots_dict[topics[1]].tcs = tcs
         
     if topics[2] == "reroute":
         data = json.loads(msg.payload.decode())
-        robots[topics[1]].reroute = data['reroute']
+        robots_dict[topics[1]].reroute = data['reroute']
+
+    if topics[2] == "path_step":
+        data = json.loads(msg.payload.decode())
+        robots_dict[topics[1]].path_step = data['path_step']
+        
+        if robots_dict[topics[1]].path_step >= len(robots_dict[topics[1]].path):
+            # if forming circle, wait
+            if robots_dict[topics[1]].path_id == 0:
+                random_path(robots[topics[1]], 25, 0.5)
+            if robots_dict[topics[1]].path_id == 1:
+                # switch to waiting
+                robots_dict[topics[1]].path_id = -1
+            # if looping, restart
+            elif robots_dict[topics[1]].path_id == 2:
+                robots[topics[1]].path_step = 0
+            # if #6 reaches target point, stop
+            elif robots_dict[topics[1]].path_id == 4:
+                robots_dict[topics[1]].path_id == -2
+            elif robots_dict[topics[1]].path_id == 5:
+                robots_dict[topics[1]].path_id = 0
+                # plan path + insert force
+            elif robots_dict[topics[1]].path_id == 6:
+                robots_dict[topics[1]].path_id = 7
 
     if msg.topic.endswith("/ping") and msg.payload.decode() == "pong":
-        robots[topics[1]].last_ping = time.time()
+        robots_dict[topics[1]].last_ping = time.time()
+
+def send_ping(target: Robot):
+    client.publish(f"robots/{target.id}/ping", "ping")
+
+def send_led(target: Robot, r: int, g: int, b: int):
+    # make sure colors are in bounds
+    r = max(0, min(255, r))
+    g = max(0, min(255, g))
+    b = max(0, min(255, b))
+    client.publish(f"robots/{target.id}/command/pattern", f"[{r}, {g}, {b}]")
+
+def send_path(target: Robot, path: list[Pose]):
+    print(f"[" + ", ".join(str(x) for x in path.x) + "], [" + ", ".join(str(y) for y in path.y) + "]")
+    client.publish(f"robots/{target.id}/command/pattern", f"[" + ", ".join(str(x) for x in path.x) + "], [" + ", ".join(str(y) for y in path.y) + "]")
 
 
 client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
-# client.on_connect = on_connect
-# client.on_message = on_message
-# client.tls_set(ca_certs="ca.pem")
-# client.username_pw_set("esp", "esp32")
-# client.connect(BROKER, 8883, 60)
-# client.loop_start()
+client.on_connect = on_connect
+client.on_message = on_message
+client.username_pw_set("esp", "esp32")
+client.connect(BROKER, 8883, 60)
+client.loop_start()
 
-obstacles = []
+# obstacles = []
 
 group0_obstacles = [
     Square(Pose(-20, 0, 0.0), 10),
@@ -140,259 +269,112 @@ group0_obstacles = [
     Square(Pose(20, 0, 0.0), 10),
     Square(Pose(0, -20, 0.0), 10)
 ]
-#     # Square(Pose(5, 5, 0.0), 2),
-#     Square(Pose(7, 8, 0.0), 2),
-#     Square(Pose(6, 5, 0.0), 3),
-#     Square(Pose(10, 6, 0.0), 3),
-#     Square(Pose(15, 15, 0.0), 4)
-# ]
 
-def do_line(robot_list: list[Robot], start: Pose, end: Pose):
-    # start = lowest globe size
-    temp_list = sorted(robot_list, key=lambda r: r.globe_dia_cm)
-    x_dist = end.x - start.x
-    y_dist = end.y - start.y
-    num_robots = len(temp_list)
+
+def choose_path(input: int):
+    # for caleb: make dropdown menu on website for the paths and a "Send" button
+    # which calls this method with the correct path #
+    # 0: random
+    # 1: line
+    # 2: circle
+    # 3: groups
     
-    colors = plt.cm.get_cmap('hsv', len(temp_list) + 1)
-     
-    for i in temp_list:
-        index = temp_list.index(i)
-        target_x = start.x + (x_dist * (index / (num_robots - 1)))
-        target_y = start.y + (y_dist * (index / (num_robots - 1)))
-        target_pose = Pose(target_x, target_y)
-        path = astar(i.pose, target_pose, obstacles, 0.1)
-        plt.plot([i.pose.x], [i.pose.y], 'o', color=colors(index))  # start point
-        plt.plot([target_pose.x], [target_pose.y], 'x', color=colors(index))
-        if path:            
-            x_vals = [node.pose.x for node in path]
-            y_vals = [node.pose.y for node in path]
-            # make colors random and unique in plot
-            
-            plt.plot(x_vals, y_vals, '-', color=colors(index), linewidth=1)  # path is colored line
-            # plt.plot(x_vals, y_vals, 'o', color=colors(index))
-            
-        i.path = path
+    # for some reason stores as a local variable
+    # selected_path = input
+    
+    if input == 0:
+        do_random()
+    # elif input == 1:
+    #     do_line()
+    elif input == 2:
+        form_circle()
         
-    plt.xlim(0, 10)
-    plt.ylim(0, 10)
-
-    plt.grid()
-    plt.savefig("line.png")
+    return input
     
-def do_random(robot_list: list[Robot], n: int = 25, r_m: float = 0.5):
-    colors = plt.cm.get_cmap('hsv', len(robot_list) + 1)
-    for i in robot_list:
-        angle = i.pose.heading
-        next_target = i.pose
-        output: list[Pose] = []
-        plt.plot([i.pose.x], [i.pose.y], 'x', color='red')  # start point
-        for j in range(n):
-            angle = random.uniform(angle - math.pi / 2, angle + math.pi / 2)
-            next_target = Pose(next_target.x + (math.cos(angle) * r_m), next_target.y + (math.sin(angle) * r_m), angle)
-            output.append(next_target)
-            # make a plot of the angle range and points
-            
-            # plt.plot([i.pose.x], [i.pose.y], 'o', color = colors(robot_list.index(i)))  # start point
-            plt.plot([next_target.x], [next_target.y], 'o', color= colors(robot_list.index(i)))  # end point
-            # plt.plot([i.pose.x, next_target.x], [i.pose.y, next_target.y], '-', color='gray', linewidth=0.5)  # path is colored line
-            # if output:
-            #     x_vals = [node.pose.x for node in output]
-            #     y_vals = [node.pose.y for node in output]
-            #     plt.plot(x_vals, y_vals, '-', color='green', linewidth=1)  # path is colored line
-            #     # plt.plot(x_vals, y_vals, 'o', color='green')
-        plt.xlim(-5, 15)
-        plt.ylim(-5, 15)
+def path_interrupt():
+    # for caleb: to be called during certain paths (ex groups and line)
+    # from website to advance path stage (ex 6 moves on or the line starts moving)
+    if selected_path == 1:
+        if force_override:
+            move_line(robots)
+        else:
+            move_line(all(r.path_id == 7 for r in robots))
+    elif selected_path == 2 and (force_override or all(r.path_id == -1 for r in robots)):
+        do_circle(robots, Pose(0,0))
+    # elif selected_path == 3:
+
+def main():
+    while True:
+        time.sleep(0.1)
+        # cycle once every 0.1s
         
-    plt.grid()
-    plt.savefig(f"random.png")
-    i.path = output
- 
-def graph_force(center: Pose = Pose(0, 0), n: float = 100):
-    # plot a vector field with the equation r^2 / n^2, pointing towards center
-    # make the vectors stronger further away from center
-    
-    x = np.linspace(-10, 10, 20)
-    y = np.linspace(-10, 10, 20)
-    X, Y = np.meshgrid(x, y)
-    U = -(X - center.x)
-    V = -(Y - center.y)
-    R = np.sqrt(U**2 + V**2)
-    U = U * (R) / n
-    V = V * (R) / n
-    print(V)
-    # print(dict(X=X, Y=Y, U=U, V=V))
-    plt.figure(figsize=(8, 8))
-    plt.quiver(X, Y, U, V, color='blue')
-    plt.plot(center.x, center.y, 'ro')  # center point
-    plt.xlim(-10, 10)
-    plt.ylim(-10, 10)
-    plt.grid()
-    plt.savefig("vector_field.png")
-    
-def calc_force(pose: Pose, center: Pose = Pose(0, 0), n: float = 100) -> Vector:
-    direction = Vector(center.x - pose.x, center.y - pose.y)
-    distance = math.sqrt(direction.x**2 + direction.y**2)
-    if distance == 0:
-        return Vector(0, 0)
-    force_magnitude = (distance**2) / n
-    force = Vector((direction.x / distance) * force_magnitude, (direction.y / distance) * force_magnitude)
-    return force
-
-def angle_nudge(pose: Pose, center: Pose, angle: float) -> float:
-    # for caleb to do
-    return angle
-    
-def form_groups(robot_list: list[Robot], obstacles: list[Square], capitals: list[Pose] = [Pose(3, 15), Pose(3, 5)]):
-    group_0 = [r for r in robot_list if r.group_id == 0]
-    group_1 = [r for r in robot_list if r.group_id == 1]
-    group_2 = [r for r in robot_list if r.group_id == 2]
-    group_3 = [r for r in robot_list if r.group_id == 3]
-    group_4 = [r for r in robot_list if r.group_id == 4]
-    
-    if len(group_0) > 0:
-        colors = plt.cm.get_cmap('hsv', len(group_0) + 1)
+        for r in robots:
+            if r.state == RobotState.LOADING:
+                print(f"Robot {robots[r]} is now loading path...")
+                r.path_step = 0
+                print(f"Checking for Robot {robots[r]}'s path")
+                if r.path:
+                    send_path(r, r.path)
+                    print(f"Path sent to {robots[r]}. Status is now active.")
+                    r.state = RobotState.ACTIVE
+                    match(selected_path):
+                        case 1:
+                            r.path_id = 6
+                            # forming line
+                else:
+                    print(f"No path found for Robot {robots[r]}. Going into idle...")
+                    r.state = RobotState.IDLE
+                
         
-        for r in group_0:
-            r.path = astar(r.pose, capitals[0].translate(-1 * calc_force(r.pose, capitals[0], 100)), obstacles, 0.25)
-            # graph path
-            if r.path:
-                x_vals = [node.pose.x for node in r.path]
-                y_vals = [node.pose.y for node in r.path]
-                plt.plot(x_vals, y_vals, '-', color=colors(group_0.index(r)), linewidth=1)  # path is colored line
-                plt.plot(x_vals, y_vals, 'o', color=colors(group_0.index(r)))
-            plt.plot([r.pose.x], [r.pose.y], 'o', color='blue')  # start point
-        plt.plot([capitals[0].x], [capitals[0].y], 'x', color='blue')  # end point
+        obstacles.clear()
+        obstacles = static_obstacles
+        # for r in robots:
+            # obstacles.append(Square(r.pose, r.globe_rad_m))
         
-        plt.grid()
-        plt.savefig("group0.png")
-
-        
-    if len(group_1) > 0:
-        # clear matplotlib plot
-        plt.clf()
-        group_1[0].path = astar(group_1[0].pose, capitals[1], obstacles, 0.25)
-        colors = plt.cm.get_cmap('hsv', len(group_1) + 1)
-        
-        for r in group_1:
-            r.path = astar(r.pose, capitals[1].translate(-1 * calc_force(r.pose, capitals[1], 100)), obstacles, 0.25)
-            # graph path
-            if r.path:
-                x_vals = [node.pose.x for node in r.path]
-                y_vals = [node.pose.y for node in r.path]
-                plt.plot(x_vals, y_vals, '-', color=colors(group_1.index(r)), linewidth=1)  # path is colored line
-                plt.plot(x_vals, y_vals, 'o', color=colors(group_1.index(r)))
-            plt.plot([r.pose.x], [r.pose.y], 'o', color='blue')  # start point
-        plt.plot([capitals[1].x], [capitals[1].y], 'x', color='blue')  # end point
-        
-        plt.grid()
-        plt.savefig("group1.png")
-
-def do_groups(robot_list: list[Robot], n: int = 25, r_m: float = 0.5, obstacles: list[Square] = []):
-    group_0 = [r for r in robot_list if r.group_id == 0]
-    group_1 = [r for r in robot_list if r.group_id == 1]
-    group_2 = [r for r in robot_list if r.group_id == 2]
-    group_3 = [r for r in robot_list if r.group_id == 3]
-    group_4 = [r for r in robot_list if r.group_id == 4]
-    
-    colors = plt.cm.get_cmap('hsv', len(robot_list) + 1)
-    
-    # plot all obstacles in matplotlib
-    for obstacle in obstacles:
-        square = plt.Rectangle((obstacle.center.x - obstacle.half_size, obstacle.center.y - obstacle.half_size), obstacle.half_size * 2, obstacle.half_size * 2, fc='gray')
-        plt.gca().add_patch(square)
-    
-    path_1_vect: list[Vector] = []
-    angle = group_0[0].pose.heading
-    last_target = group_0[0].pose
-    next_target = Vector(0.0, 0.0)
-    plt.plot([group_0[0].pose.x], [group_0[0].pose.y], 'x', color='red')  # start point
-    for i in range(n):
-        last_target = last_target.translate(next_target)
-        next_target = Vector(0, 0)
-        while (test_line(last_target, last_target.translate(next_target), obstacles) or next_target == Vector(0, 0)):
-            angle = random.uniform(angle - math.pi / 2, angle + math.pi / 2)
-            print("Angle: ", angle)
-            next_target = Vector(math.cos(angle) * r_m, math.sin(angle) * r_m)
-        path_1_vect.append(next_target)
-        plt.plot([last_target.x], [last_target.y], 'o', color="blue")  # end point
-        
-    
-    
-    plt.xlim(-12, 12)
-    plt.ylim(-12, 12)
-    
-    plt.grid()
-    plt.savefig(f"groups.png")
-    return path_1_vect
-        
-
-def form_circle(robot_list: list[Robot], center: Pose, rad: float = 1.0):
-    circle_points = circle(len(robot_list), center, rad)
-    A = np.array([[point.x, point.y] for point in circle_points])
-    B = np.array([[robot.pose.x, robot.pose.y] for robot in robot_list])
-    C = np.linalg.norm(A[:, None, :] - B[None, :, :], axis=2)
-
-    rows, cols = linear_sum_assignment(C)
-    pairs = list(zip(rows, cols))
-    total_distance = C[rows, cols].sum()
-    print(f"Optimal assignment pairs (circle point index, robot index): {pairs}")
-    print(f"Total minimum distance: {total_distance}")
-
-    # not necessary
-    # output: list[list[Pose]] = []
-
-    # make a list with each robot's circle point number
-    circle_nums = [p[1] for p in pairs]
-    print("Circle nums: ", circle_nums)
-
-    colors = plt.cm.get_cmap('hsv', len(pairs) + 1)
-    for index, i in enumerate(pairs):
-        print(f"Robot {i[1]+1} to Circle Point {i[0]+1}")
-        path = astar(robot_list[i[1]].pose, circle_points[i[0]], obstacles, 0.25)
-        if path:
-            x_vals = [node.pose.x for node in path]
-            y_vals = [node.pose.y for node in path]
-            plt.plot(x_vals, y_vals, '-', color=colors(index))  # path is colored line
-            plt.plot(x_vals, y_vals, 'o', color=colors(index))
-        robot_list[i[1]].path = path
-        # output.append(path)
-        plt.plot([robot_list[i[1]].pose.x], [robot_list[i[1]].pose.y], 'o', color=colors(index))  # start point
-        plt.plot([circle_points[i[0]].x], [circle_points[i[0]].y], 'x', color=colors(index))  # end point
-    # set axes [0,10] for x and y
-    plt.xlim(0, 10)
-    plt.ylim(0, 10)
-
-    plt.grid()
-    plt.savefig("circle.png")
-    return circle_nums
-    
-    # return output
-
-def do_circle(robot_list: list[Robot], center: Pose, rad: float = 1.0, n: int = 1):
-    # generate n * 12 points in a circle around center
-    circle_pts = circle(n * 12, center, rad)
-    colors = plt.cm.get_cmap('hsv', len(robot_list) + 1)
-    
-    
-    
-    
-    plt.xlim(0, 10)
-    plt.ylim(0, 10)
-    
+        # check if all robots path_id is -1
+        all_waiting = auto_continue and all(r.path_id == -1 for r in robots)
+        if all_waiting:
+            print("All robots reached circle, running do_circle")
+            do_circle(robots, circle_center, circle_nums, 3, 5)
+            for r in robots:
+                r.path_id = 2
 
 # simulate pretend robots
-robot_list = []
-for i in range(12):
-    robot_list.append(Robot(name=f"robot{i+1}"))
-    robot_list[i].pose=Pose(x=random.randint(0, 10), y=random.randint(0, 10), heading=0.0)
-    robot_list[i].globe_dia_cm = random.randint(15, 45)
-    if (i < 5):
-        robot_list[i].group_id = 0
+# robot_list = []
+# for i in range(12):
+#     robot_list.append(Robot(num_ordered= i))
+#     robot_list[i].pose=Pose(x=random.randint(0, 10), y=random.randint(0, 10), heading=0.0)
+#     robot_list[i].globe_dia_cm = random.randint(15, 45)
+#     if (i < 5):
+#         robot_list[i].group_id = 0
+#     if (i == 6):
+#         robot_list[i].group_id = 1
+#     if (i > 6):        robot_list[i].group_id = 2
+#     if (i >= 10):
+#         robot_list[i].group_id = 3
+
+# robots = robot_list
+
+# do_line()
+# move_line()
+
+# print(robots)
+# write_data()
+# robots = None
+# print(robots)
+# robots = load_robots()
+# print(robots)
 
 # print(do_groups(robot_list, 25, 0.5, obstacles + group0_obstacles))
 # print(form_groups(robot_list, obstacles))
-print(form_circle(robot_list, Pose(5, 5), 3.0))
+
+# print(do_6(robot_list))
+
+# random_path(Robot(num_ordered=0, pose=Pose(0,0,0)), 25, 0.5, Pose(0,0,0))
+# plt.grid()
+# plt.savefig("forcefield_test.png")
+
+# print(form_circle(robot_list, Pose(5, 5), 3.0))
 # graph_force()
 
 # def check_collision(robot_list: list[Robot]):
@@ -411,22 +393,23 @@ print(form_circle(robot_list, Pose(5, 5), 3.0))
 #             collision_pairs.add((robot_list[r1].name, robot_list[r2].name))
 #     return list(collision_pairs)
 
-# # test the check_collision function by making a list of robtos
-# robot_list = [
-#     Robot(name="robot1", pose=Pose(1, 1, 0.0)),
-#     Robot(name="robot2", pose=Pose(1.2, 1.2, 0.0)),
-#     Robot(name="robot3", pose=Pose(5, 5, 0.0)),
-#     Robot(name="robot4", pose=Pose(5.1, 5.1, 0.0)),
-#     Robot(name="robot5", pose=Pose(9, 9, 0.0))
-# ]
-# check_collision(robot_list)
 
 # # print(do_circle(robot_list))
 # # do_line(robot_list, Pose(1, 1, 0.0), Pose(9, 9, 0.0))
 
 # # do_random(robot_list, 25, 0.5)
 
-# # print(astar(start, target))
 
-# # for direction in Direction:
-#     # print(direction, direction.value)
+
+# TO DO: either make main loop take parameters or remove parameters from other functions
+
+# robots = robot_list
+# circle_nums = form_circle(robots, circle_center, 3.0)
+# for r in robots:
+#     r.path_id = -1
+#     r.pose = r.path[len(r.path) - 1]
+# main()
+
+# selected_path = 1
+# do_line()
+main()

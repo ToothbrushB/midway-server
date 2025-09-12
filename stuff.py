@@ -15,12 +15,23 @@ import paho.mqtt.client as mqtt
 
 class RobotState(Enum):
     OFFLINE = 0
-    IDLE = 1
-    ACTIVE_MOVING = 2
-    ACTIVE_STOPPED = 3
-    OBSTRUCTED_STOPPED = 4
-    OBSTRUCTED_REROUTING = 5
-    OBSTRUCTED_SCANNING = 6
+    LOADING = 1
+    IDLE = 2
+    ACTIVE = 3
+    
+    # CURRENTLY UNUSED:
+    RANDOM_MOVING = 4
+    CIRCLE_FORMING = 5
+    CIRCLE_WAITING = 6
+    CIRCLE_MOVING = 7
+    LINE_FORMING = 8
+    LINE_MOVING = 9
+    # ACTIVE_MOVING = 2
+    # ACTIVE_STOPPED = 3
+    # OBSTRUCTED_STOPPED = 4
+    # OBSTRUCTED_REROUTING = 5
+    # OBSTRUCTED_SCANNING = 6
+    
 
 @dataclass
 class Direction(Enum):
@@ -41,6 +52,9 @@ class Color:
 
     def __str__(self):
         return f"[{self.r}, {self.g}, {self.b}]"
+
+    def __eq__(self, other: 'Color') -> bool:
+        return self.r == other.r and self.g == other.g and self.b == other.b
 
 @dataclass
 class LED:
@@ -67,7 +81,13 @@ class Telemetry:
 class Vector:
     x: float
     y: float
-    
+
+    def from_angle(angle: float, magnitude: float) -> 'Vector':
+        return Vector(
+            x = math.cos(angle) * magnitude,
+            y = math.sin(angle) * magnitude
+        )
+
     def mag(self) -> float:
         return math.hypot(self.x, self.y)
     
@@ -76,6 +96,10 @@ class Vector:
     
     def __rmul__(self, scalar: float) -> 'Vector':
         return Vector(self.x * scalar, self.y * scalar)
+    
+    def __eq__(self, other: 'Vector') -> bool:
+        return (abs(self.x - other.x) < 0.00001 and 
+                abs(self.y - other.y) < 0.00001)
 
 @dataclass
 class Pose:
@@ -83,10 +107,13 @@ class Pose:
     y: float
     heading: float = 0.0
     # used to maintain consistency
-    inches_per_node: float = 8
+    # inches_per_node: float = 8
 
     def dist (self, other: 'Pose') -> float:
         return math.hypot(self.x - other.x, self.y - other.y)
+    
+    def get_vec(self, other: 'Pose') -> Vector:
+        return Vector(self.x - other.x, self.y - other.y)
 
     def __eq__(self, other: 'Pose') -> bool:
         return (abs(self.x - other.x) < 0.00001 and 
@@ -109,6 +136,9 @@ class Pose:
                 heading = self.heading
             )
         return self
+
+    def as_vector(self) -> Vector:
+        return Vector(self.x, self.y)
         
     # def translate(self, vec: Vector) -> 'Pose':
     #     return Pose(
@@ -200,9 +230,10 @@ def astar(start: Pose, end: Pose, obstacles: list[Square], grid: float = 1.0) ->
             output = []
             node = current
             while node.parent is not None:
-                output.append(node)
+                output.append(node.pose)
                 node = node.parent
-            output.append(Node(start, 0, start.dist(end)))
+            # output.append(Node(start, 0, start.dist(end)))
+            output.append(start)
             output.reverse()
             return output
 
@@ -225,6 +256,9 @@ def circle(n: int, translate: Pose, rad: float = 1.0) -> list[Pose]:
     points = [Pose(rad*math.cos(k*2*math.pi/n) + translate.x, rad*math.sin(k*2*math.pi/n) + translate.y, 0.0) for k in range(n)]
     return points
 
+def to_meters(inches: float) -> float:
+    return 0.0254
+
 @dataclass
 class TCS:
     r: int
@@ -235,26 +269,112 @@ class TCS:
     color_temperature: int
     status: str
 
+class KalmanFilter2D:
+    def __init__(self, dt):
+        self.dt = dt  # time step
+
+        # State vector: [x, y, vx, vy]
+        self.x = np.zeros((4, 1))
+
+        # State transition matrix (F)
+        self.F = np.array([
+            [1, 0, dt, 0],
+            [0, 1, 0, dt],
+            [0, 0, 1,  0],
+            [0, 0, 0,  1]
+        ])
+
+        # Control input model (for acceleration input)
+        self.B = np.array([
+            [0.5 * dt ** 2, 0],
+            [0, 0.5 * dt ** 2],
+            [dt, 0],
+            [0, dt]
+        ])
+
+        # State covariance matrix (P)
+        self.P = np.eye(4) * 1.0
+
+        # Process noise covariance (Q)
+        self.Q = np.eye(4) * 0.1
+
+        # Measurement matrices for each sensor
+        # Camera: position only
+        self.H_camera = np.array([
+            [1, 0, 0, 0],
+            [0, 1, 0, 0]
+        ])
+
+        # Wheel encoder: full state
+        self.H_wheel = np.eye(4)
+
+        # Measurement noise covariance
+        self.R_camera = np.diag([0.5, 0.5])
+        self.R_wheel = np.diag([0.2, 0.2, 0.3, 0.3])
+
+    def predict(self, u_acc=None):
+        if u_acc is None:
+            u_acc = np.zeros((2, 1))  # no acceleration
+        # Predict the next state
+        self.x = self.F @ self.x + self.B @ u_acc
+        self.P = self.F @ self.P @ self.F.T + self.Q
+
+    def update_camera(self, z):
+        z = np.reshape(z, (2, 1))
+        y = z - self.H_camera @ self.x
+        S = self.H_camera @ self.P @ self.H_camera.T + self.R_camera
+        K = self.P @ self.H_camera.T @ np.linalg.inv(S)
+        self.x += K @ y
+        I = np.eye(4)
+        self.P = (I - K @ self.H_camera) @ self.P
+
+    def update_wheel(self, z):
+        z = np.reshape(z, (4, 1))
+        y = z - self.H_wheel @ self.x
+        S = self.H_wheel @ self.P @ self.H_wheel.T + self.R_wheel
+        K = self.P @ self.H_wheel.T @ np.linalg.inv(S)
+        self.x += K @ y
+        I = np.eye(4)
+        self.P = (I - K @ self.H_wheel) @ self.P
+
+    def get_state(self):
+        return self.x.flatten()
+
 @dataclass
 class Robot:
-    name: str
+    # the robot's ID, ordered from smallest to largest
+    id: str
+    num_ordered: int
     last_ping: float = 0
     led = LED(Color(0, 0, 0), 0)
     heading = RobotHeading(0.0, 0.0, 0.0, 0.0, "UNDEFINED")
     telemetry = Telemetry(0.0, 0, 0.0, 0.0, False)
     pose: Pose = field(default_factory=lambda: Pose(0.0, 0.0, 0.0))
-    pose2 = Pose(0.0, 0.0, 0.0)
     # the current target for navigation
     target_pose = Pose(0.0, 0.0, 0.0)
     wifi_rssi: int = 0
     tcs = TCS(0, 0, 0, 0, 0, 0, "not_initialized")
     reroute: bool = False
     blink_pattern: list[Color] = field(default_factory=lambda: [Color(0,0,0)]*10)
-    # x_pattern: list[float] = []
-    # y_pattern: list[float] = []
+    
+    state: RobotState = RobotState.OFFLINE
+    
     path: list[Pose] = field(default_factory=list)
-    # 23in = 58.42cm
-    globe_dia_cm: int = 58.42
+    path_step: int = 0
+    path_id: int = 0
+    # -1: waiting to start circle
+    # 0: randomly moving
+    # 1: switch to waiting at end
+    # 2: doing circle
+    # 3: grouping
+    # 4: robot 6 astaring
+    # 5: line march
+    # 6: forming line
+    # 7: waiting for line march
+    
+    
+    # 23in = 58.42cm / 2 = 29.21cm radius
+    globe_rad_m: int = 0.2921
     group_id: int = 1 # change to 0 after testing
     # 0: large group (upper left)
     # 1: 10 (bottom left)
@@ -262,13 +382,12 @@ class Robot:
     # 3: roaming pair
     # 4: 6 while unattached
 
-    client: mqtt.Client = None
+    # client: mqtt.Client = None
     
-    def send_ping(self):
-        self.client.publish(f"robots/{self.name}/ping", "ping")
+    # def 
 
-    def send_blink_pattern(self):
-        self.client.publish(f"robots/{self.name}/command/blink_pattern", ", ".join(str(color) for color in self.blink_pattern))
+    # def send_blink_pattern(self):
+    #     self.client.publish(f"robots/{self.id}/command/blink_pattern", ", ".join(str(color) for color in self.blink_pattern))
 
-    def send_pattern(self):
-        self.client.publish(f"robots/{self.name}/command/pattern", "[" + ", ".join(str(x) for x in self.x_pattern) + "], [" + ", ".join(str(y) for y in self.y_pattern) + "]")
+    # def send_pattern(self):
+    #     self.client.publish(f"robots/{self.id}/command/pattern", f"[" + ", ".join(str(x) for x in self.path.x) + "], [" + ", ".join(str(y) for y in self.path.y) + "]")
