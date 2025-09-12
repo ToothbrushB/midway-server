@@ -113,24 +113,25 @@ def on_connect(client, userdata, flags, reason_code, properties):
 def on_message(client, userdata, msg):
     topics = msg.topic.split('/')
     if topics[0] == "robots" and not topics[1] in robots_dict: # add the robot into the dictionary
-        robots_dict[topics[1]] = next([x for x in robots if x.id == [topics[1]]])
+        robots_dict[topics[1]] = next(x for x in robots if x.id == topics[1])
         robots_dict[topics[1]].state = RobotState.LOADING
         print(f"Robot {topics[1]} connected")
 
-    if topics[2] == "imu" and topics[3] == "euler":
+    # print(f"Message received on topic {msg.topic}: {msg.payload.decode()}")
+    
+
+    if topics[2] == "imu":
      # read json from msg.payload
         data = json.loads(msg.payload.decode())
         heading = RobotHeading(
             x=data['x'],
             y=data['y'],
             z=data['z'],
-            rad_accuracy=data['rad_accuracy'],
-            accuracy=data['accuracy']
+            rad_accuracy=data['rad_accuracy']
         )
         robots_dict[topics[1]].heading = heading
-        # print(f"Robot {topics[1]} heading: {heading}")
 
-    if topics[2] == "led":
+    elif topics[2] == "led": # not impl
         # read json from msg.payload
         data = json.loads(msg.payload.decode())
         led = LED(
@@ -143,19 +144,21 @@ def on_message(client, userdata, msg):
         )
         robots_dict[topics[1]].led = led
 
-    if topics[3] == "telemetry":
+    elif topics[2] == "M":
         data = json.loads(msg.payload.decode())
-        telemetry = Telemetry(
+        motor = Motor(
             speed=data['speed'],
             ticks=data['ticks'],
             output=data['output'],
             setpoint=data['setpoint'],
             hasPower=data['hasPower']
-            # json in c++ might need to be changed to True and False (instead of true and false)
         )
-        robots_dict[topics[1]].telemetry = telemetry
+        if topics[3] == "R":
+            robots_dict[topics[1]].motorRight = motor
+        elif topics[3] == "L":
+            robots_dict[topics[1]].motorLeft = motor
     
-    if topics[2] == "odometry":
+    elif topics[2] == "odometry":
         if topics[3] == "pose":
             data = json.loads(msg.payload.decode())
             pose = Pose(
@@ -165,21 +168,21 @@ def on_message(client, userdata, msg):
             )
             robots_dict[topics[1]].pose = pose
 
-        elif topics[3] == "pose2":
-            data = json.loads(msg.payload.decode())
-            pose2 = Pose(
-                x=data['x'],
-                y=data['y'],
-                heading=data['heading']
-            )
-            robots_dict[topics[1]].pose2 = pose2
+        # elif topics[3] == "pose2":
+        #     data = json.loads(msg.payload.decode())
+        #     pose2 = Pose(
+        #         x=data['x'],
+        #         y=data['y'],
+        #         heading=data['heading']
+        #     )
+        #     robots_dict[topics[1]].pose2 = pose2
 
-    if topics[2] == "wifi" and topics[3] == "rssi":
+    elif topics[2] == "wifi" and topics[3] == "rssi":
         data = json.loads(msg.payload.decode())
         rssi = data['rssi']
         robots_dict[topics[1]].wifi_rssi = rssi  
 
-    if topics[2] == "tcs":
+    elif topics[2] == "tcs":
         data = json.loads(msg.payload.decode())
         status = data['status']
         if status == "ok":
@@ -209,11 +212,11 @@ def on_message(client, userdata, msg):
             robots_dict[topics[1]].tcs.status = status
             robots_dict[topics[1]].tcs = tcs
         
-    if topics[2] == "reroute":
+    if topics[2] == "reroute": # not impl
         data = json.loads(msg.payload.decode())
         robots_dict[topics[1]].reroute = data['reroute']
 
-    if topics[2] == "path_step":
+    elif topics[2] == "path_step": # not impl
         data = json.loads(msg.payload.decode())
         robots_dict[topics[1]].path_step = data['path_step']
         
@@ -239,6 +242,7 @@ def on_message(client, userdata, msg):
     if msg.topic.endswith("/ping") and msg.payload.decode() == "pong":
         robots_dict[topics[1]].last_ping = time.time()
 
+    print(robots_dict[topics[1]])
 def send_ping(target: Robot):
     client.publish(f"robots/{target.id}/ping", "ping")
 
@@ -306,38 +310,38 @@ def path_interrupt():
 def main():
     while True:
         time.sleep(0.1)
-        # cycle once every 0.1s
+        # # cycle once every 0.1s
         
-        for r in robots:
-            if r.state == RobotState.LOADING:
-                print(f"Robot {robots[r]} is now loading path...")
-                r.path_step = 0
-                print(f"Checking for Robot {robots[r]}'s path")
-                if r.path:
-                    send_path(r, r.path)
-                    print(f"Path sent to {robots[r]}. Status is now active.")
-                    r.state = RobotState.ACTIVE
-                    match(selected_path):
-                        case 1:
-                            r.path_id = 6
-                            # forming line
-                else:
-                    print(f"No path found for Robot {robots[r]}. Going into idle...")
-                    r.state = RobotState.IDLE
+        # for r in robots:
+        #     if r.state == RobotState.LOADING:
+        #         print(f"Robot {robots[r]} is now loading path...")
+        #         r.path_step = 0
+        #         print(f"Checking for Robot {robots[r]}'s path")
+        #         if r.path:
+        #             send_path(r, r.path)
+        #             print(f"Path sent to {robots[r]}. Status is now active.")
+        #             r.state = RobotState.ACTIVE
+        #             match(selected_path):
+        #                 case 1:
+        #                     r.path_id = 6
+        #                     # forming line
+        #         else:
+        #             print(f"No path found for Robot {robots[r]}. Going into idle...")
+        #             r.state = RobotState.IDLE
                 
         
-        obstacles.clear()
-        obstacles = static_obstacles
-        # for r in robots:
-            # obstacles.append(Square(r.pose, r.globe_rad_m))
+        # obstacles.clear()
+        # obstacles = static_obstacles
+        # # for r in robots:
+        #     # obstacles.append(Square(r.pose, r.globe_rad_m))
         
-        # check if all robots path_id is -1
-        all_waiting = auto_continue and all(r.path_id == -1 for r in robots)
-        if all_waiting:
-            print("All robots reached circle, running do_circle")
-            do_circle(robots, circle_center, circle_nums, 3, 5)
-            for r in robots:
-                r.path_id = 2
+        # # check if all robots path_id is -1
+        # all_waiting = auto_continue and all(r.path_id == -1 for r in robots)
+        # if all_waiting:
+        #     print("All robots reached circle, running do_circle")
+        #     do_circle(robots, circle_center, circle_nums, 3, 5)
+        #     for r in robots:
+        #         r.path_id = 2
 
 # simulate pretend robots
 # robot_list = []

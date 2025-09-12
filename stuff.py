@@ -67,10 +67,9 @@ class RobotHeading:
     y: float
     z: float
     rad_accuracy: float
-    accuracy: str
 
 @dataclass
-class Telemetry:
+class Motor:
     speed: float
     ticks: int
     output: float
@@ -346,14 +345,15 @@ class Robot:
     id: str
     num_ordered: int
     last_ping: float = 0
-    led = LED(Color(0, 0, 0), 0)
-    heading = RobotHeading(0.0, 0.0, 0.0, 0.0, "UNDEFINED")
-    telemetry = Telemetry(0.0, 0, 0.0, 0.0, False)
+    led: LED = field(default_factory=lambda: LED(Color(0, 0, 0), 0))
+    heading: RobotHeading = field(default_factory=lambda: RobotHeading(0.0, 0.0, 0.0, 0.0))
+    motorLeft: Motor = field(default_factory=lambda: Motor(0.0, 0, 0.0, 0.0, False))
+    motorRight: Motor = field(default_factory=lambda: Motor(0.0, 0, 0.0, 0.0, False))
     pose: Pose = field(default_factory=lambda: Pose(0.0, 0.0, 0.0))
     # the current target for navigation
-    target_pose = Pose(0.0, 0.0, 0.0)
+    target_pose: Pose = field(default_factory=lambda: Pose(0.0, 0.0, 0.0))
     wifi_rssi: int = 0
-    tcs = TCS(0, 0, 0, 0, 0, 0, "not_initialized")
+    tcs: TCS = field(default_factory=lambda: TCS(0, 0, 0, 0, 0, 0, "not_initialized"))
     reroute: bool = False
     blink_pattern: list[Color] = field(default_factory=lambda: [Color(0,0,0)]*10)
     
